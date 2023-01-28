@@ -64,7 +64,7 @@ export function App(props: any) {
           </div>
           <Button onClick={copyPublicAddress}>Copy public address to share</Button>
 
-          <form onSubmit={submitConnect}>
+          <form onSubmit={submitConnect} class="w-full">
             <label htmlFor="address-input">Connect to: </label>
             <input type="text" id="address-input" class="text-black w-full" name="address" />
             <Button>Connect</Button>

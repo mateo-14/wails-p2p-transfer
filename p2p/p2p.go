@@ -18,9 +18,7 @@ type P2P struct {
 	host host.Host
 }
 
-const (
-	ProtocolPing = "/ping/1.0.0"
-)
+const ProtocolPing = "/ping/1.0.0"
 
 func New(privk crypto.PrivKey) (*P2P, error) {
 	p := &P2P{}
@@ -73,6 +71,7 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 
 	s, err := p.host.NewStream(ctx, peerInfo.ID, ProtocolPing)
 	if err != nil {
+		fmt.Println("error opening stream: ", err)
 		return err
 	}
 
