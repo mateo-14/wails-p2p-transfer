@@ -1,8 +1,8 @@
-import { StartP2P } from '../wailsjs/go/main/App';
+import { StartP2P, ConnectToNode } from '../wailsjs/go/main/App';
 import { useState } from 'preact/hooks';
 import { h } from 'preact';
 import { main } from '../wailsjs/go/models';
-import { JSXInternal } from "preact/src/jsx";
+import { JSXInternal } from 'preact/src/jsx';
 
 type HostDataState = (main.HostData & { publicAddress: string }) | null;
 
@@ -34,6 +34,20 @@ export function App(props: any) {
   };
 
   const copyPublicAddressToClipboard = () => {};
+
+  const submitConnect = (e: h.JSX.TargetedEvent<HTMLFormElement, Event>) => {
+    e.preventDefault();
+    const address = e.currentTarget.address.value;
+    if (address === '') return;
+
+    ConnectToNode(address)
+      .then(() => {
+        console.log('Connected');
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  };
   return (
     <div class="min-h-screen bg-zinc-900">
       {hostData ? (
@@ -48,16 +62,13 @@ export function App(props: any) {
               </p>
             </div>
           </div>
-          <Button onClick={copyPublicAddress}>
-            Copy public address to share
-          </Button>
+          <Button onClick={copyPublicAddress}>Copy public address to share</Button>
 
-
-          <div>
+          <form onSubmit={submitConnect}>
             <label htmlFor="address-input">Connect to: </label>
-            <input type="text" id="address-input" class='text-black' />
+            <input type="text" id="address-input" class="text-black" name="address" />
             <Button>Connect</Button>
-          </div>
+          </form>
         </>
       ) : (
         <Button onClick={startP2P}>Start P2P</Button>
@@ -66,7 +77,7 @@ export function App(props: any) {
   );
 }
 
-function Button(props : JSXInternal.IntrinsicElements['button']) {
+function Button(props: JSXInternal.IntrinsicElements['button']) {
   return (
     <button
       class="bg-purple-700 py-2 px-3 rounded-md text-sm font-semibold hover:bg-purple-600 hover:shadow-lg active:shadow-lg hover:shadow-purple-600/20 active:shadow-purple-600/50 transition-all"

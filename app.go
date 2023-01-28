@@ -13,6 +13,7 @@ import (
 // App struct
 type App struct {
 	ctx context.Context
+	p2p *p2p.P2P
 }
 
 // NewApp creates a new App application struct
@@ -78,9 +79,15 @@ func (a *App) StartP2P() (*HostData, error) {
 		return nil, err
 	}
 
+	a.p2p = p2p
+
 	return &HostData{
 		Addr: p2p.Addrs()[0].String(),
 		Id:   p2p.Id(),
 	}, nil
 
+}
+
+func (a *App) ConnectToNode(addr string) error {
+	return a.p2p.Connect(a.ctx, addr)
 }
