@@ -52,12 +52,12 @@ export function App(props: any) {
     <div class="min-h-screen bg-zinc-900">
       {hostData ? (
         <>
-          <div class="info">
-            <div class="info__field info__ip">
-              <p class="info__field-text">Your node ID is: {hostData.id}</p>
+          <div>
+            <div>
+              <p>Your node ID is: {hostData.id}</p>
             </div>
-            <div class="info__field info__address">
-              <p class="info__field-text">
+            <div>
+              <p>
                 Addresses: local: {hostData.address}, public: {hostData.publicAddress}
               </p>
             </div>
@@ -66,7 +66,7 @@ export function App(props: any) {
 
           <form onSubmit={submitConnect}>
             <label htmlFor="address-input">Connect to: </label>
-            <input type="text" id="address-input" class="text-black" name="address" />
+            <input type="text" id="address-input" class="text-black w-full" name="address" />
             <Button>Connect</Button>
           </form>
         </>

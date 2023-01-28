@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -19,6 +18,10 @@ type P2P struct {
 	host host.Host
 }
 
+const (
+	ProtocolPing = "/ping/1.0.0"
+)
+
 func New(privk crypto.PrivKey) (*P2P, error) {
 	p := &P2P{}
 
@@ -33,7 +36,7 @@ func New(privk crypto.PrivKey) (*P2P, error) {
 func (p *P2P) start(privk crypto.PrivKey) error {
 	host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4000"), libp2p.Identity(privk))
 	p.host = host
-	host.SetStreamHandler("/p2p/1.0.0", p.streamHandler)
+	host.SetStreamHandler(ProtocolPing, p.pingHandler)
 	return err
 }
 
@@ -68,28 +71,41 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 
 	p.host.Peerstore().AddAddrs(peerInfo.ID, peerInfo.Addrs, peerstore.PermanentAddrTTL)
 
-	s, err := p.host.NewStream(ctx, peerInfo.ID, "/p2p/1.0.0")
+	s, err := p.host.NewStream(ctx, peerInfo.ID, ProtocolPing)
 	if err != nil {
 		return err
 	}
 
-	p.streamHandler(s)
+	p.pingHandler(s)
 	return nil
 }
 
-func (*P2P) streamHandler(s network.Stream) {
+func (p *P2P) pingHandler(s network.Stream) {
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			n, err := s.Write([]byte{1})
+			if err != nil {
+				fmt.Println("Error writing to stream: ", err)
+			}
+
+			fmt.Printf("Wrote %d bytes to stream\n", n)
+		}
+	}()
+}
+
+/* func (*P2P) streamHandler(s network.Stream) {
 	go writeCounter(s)
 	go readCounter(s)
 }
 
 func writeCounter(s network.Stream) {
-	var counter uint64
 
 	for {
 		<-time.After(time.Second)
-		counter++
 
-		err := binary.Write(s, binary.BigEndian, counter)
+
+		n, err := s.Write([]byte("ping"))
 		if err != nil {
 			panic(err)
 		}
@@ -108,3 +124,4 @@ func readCounter(s network.Stream) {
 		fmt.Printf("Received %d from %s\n", counter, s.ID())
 	}
 }
+*/
