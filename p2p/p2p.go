@@ -2,15 +2,11 @@ package p2p
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -33,8 +29,12 @@ func New(privk crypto.PrivKey) (*P2P, error) {
 
 func (p *P2P) start(privk crypto.PrivKey) error {
 	host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4000"), libp2p.Identity(privk))
+
+	host.Network().Notify(&Notifiee{})
+
 	p.host = host
-	host.SetStreamHandler(ProtocolPing, p.pingHandler)
+	// host.SetStreamHandler(ProtocolPing, p.pingHandler)
+
 	return err
 }
 
@@ -67,18 +67,17 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 		return err
 	}
 
-	p.host.Peerstore().AddAddrs(peerInfo.ID, peerInfo.Addrs, peerstore.PermanentAddrTTL)
-
-	s, err := p.host.NewStream(ctx, peerInfo.ID, ProtocolPing)
+	_, err = p.host.NewStream(ctx, peerInfo.ID, ProtocolPing)
 	if err != nil {
 		return err
 	}
 
-	p.pingHandler(s)
+	// p.pingHandler(s)
 	return nil
 }
 
-func (p *P2P) pingHandler(s network.Stream) {
+/* func (p *P2P) pingHandler(s network.Stream) {
+	s.Conn().ID()
 	go func() {
 		for {
 			time.Sleep(time.Second)
@@ -102,10 +101,10 @@ func (p *P2P) pingHandler(s network.Stream) {
 				return
 			}
 
-			fmt.Printf("Ping: Read %d bytes from stream: %d\n", n, buf[0])
+			fmt.Printf("Ping: Read %d bytes from stream \n", n)
 		}
 	}()
-}
+} */
 
 /* func (*P2P) streamHandler(s network.Stream) {
 	go writeCounter(s)

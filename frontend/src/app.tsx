@@ -18,9 +18,12 @@ export function App(props: any) {
         fetch('https://api.ipify.org')
           .then(res => res.text())
           .then(ip => {
+            const publicAddress = data.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
+
             setHostData({
               ...data,
-              publicAddress: data.address.replace(new RegExp(IP_REGEX), `/${ip}/`)
+              address: `${data.address}/p2p/${data.id}}`,
+              publicAddress: `${publicAddress}/p2p/${data.id}`,
             });
           });
       })
@@ -33,7 +36,6 @@ export function App(props: any) {
     navigator.clipboard.writeText(`${hostData.publicAddress}/${hostData.id}`);
   };
 
-  const copyPublicAddressToClipboard = () => {};
 
   const submitConnect = (e: h.JSX.TargetedEvent<HTMLFormElement, Event>) => {
     e.preventDefault();
@@ -53,14 +55,13 @@ export function App(props: any) {
       {hostData ? (
         <>
           <div>
-            <div>
               <p>Your node ID is: {hostData.id}</p>
-            </div>
-            <div>
               <p>
                 Addresses: local: {hostData.address}, public: {hostData.publicAddress}
               </p>
-            </div>
+              <p>
+
+              </p>
           </div>
           <Button onClick={copyPublicAddress}>Copy public address to share</Button>
 
