@@ -1,0 +1,78 @@
+import { StartP2P } from '../wailsjs/go/main/App';
+import { useState } from 'preact/hooks';
+import { h } from 'preact';
+import { main } from '../wailsjs/go/models';
+import { JSXInternal } from "preact/src/jsx";
+
+type HostDataState = (main.HostData & { publicAddress: string }) | null;
+
+const IP_REGEX = '/((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d).?\\b){4}/';
+export function App(props: any) {
+  const [hostData, setHostData] = useState<HostDataState>(null);
+
+  const startP2P = () => {
+    setHostData(null);
+
+    StartP2P()
+      .then(data => {
+        fetch('https://api.ipify.org')
+          .then(res => res.text())
+          .then(ip => {
+            setHostData({
+              ...data,
+              publicAddress: data.address.replace(new RegExp(IP_REGEX), `/${ip}/`)
+            });
+          });
+      })
+      .catch(err => {});
+  };
+
+  const copyPublicAddress = () => {
+    if (hostData === null) return;
+
+    navigator.clipboard.writeText(`${hostData.publicAddress}/${hostData.id}`);
+  };
+
+  const copyPublicAddressToClipboard = () => {};
+  return (
+    <div class="min-h-screen bg-zinc-900">
+      {hostData ? (
+        <>
+          <div class="info">
+            <div class="info__field info__ip">
+              <p class="info__field-text">Your node ID is: {hostData.id}</p>
+            </div>
+            <div class="info__field info__address">
+              <p class="info__field-text">
+                Addresses: local: {hostData.address}, public: {hostData.publicAddress}
+              </p>
+            </div>
+          </div>
+          <Button onClick={copyPublicAddress}>
+            Copy public address to share
+          </Button>
+
+
+          <div>
+            <label htmlFor="address-input">Connect to: </label>
+            <input type="text" id="address-input" class='text-black' />
+            <Button>Connect</Button>
+          </div>
+        </>
+      ) : (
+        <Button onClick={startP2P}>Start P2P</Button>
+      )}
+    </div>
+  );
+}
+
+function Button(props : JSXInternal.IntrinsicElements['button']) {
+  return (
+    <button
+      class="bg-purple-700 py-2 px-3 rounded-md text-sm font-semibold hover:bg-purple-600 hover:shadow-lg active:shadow-lg hover:shadow-purple-600/20 active:shadow-purple-600/50 transition-all"
+      {...props}
+    >
+      {props.children}
+    </button>
+  );
+}
