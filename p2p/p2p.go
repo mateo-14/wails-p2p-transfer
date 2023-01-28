@@ -71,7 +71,6 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 
 	s, err := p.host.NewStream(ctx, peerInfo.ID, ProtocolPing)
 	if err != nil {
-		fmt.Println("error opening stream: ", err)
 		return err
 	}
 
@@ -85,10 +84,25 @@ func (p *P2P) pingHandler(s network.Stream) {
 			time.Sleep(time.Second)
 			n, err := s.Write([]byte{1})
 			if err != nil {
-				fmt.Println("Error writing to stream: ", err)
+				fmt.Println("Ping: Error writing to stream: ", err)
+				return
 			}
 
-			fmt.Printf("Wrote %d bytes to stream\n", n)
+			fmt.Printf("Ping: Wrote %d bytes to stream\n", n)
+		}
+	}()
+
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			buf := make([]byte, 1)
+			n, err := s.Read(buf)
+			if err != nil {
+				fmt.Println("Ping: Error reading from stream: ", err)
+				return
+			}
+
+			fmt.Printf("Ping: Read %d bytes from stream: %d\n", n, buf[0])
 		}
 	}()
 }

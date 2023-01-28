@@ -89,5 +89,12 @@ func (a *App) StartP2P() (*HostData, error) {
 }
 
 func (a *App) ConnectToNode(addr string) error {
-	return a.p2p.Connect(a.ctx, addr)
+	err := a.p2p.Connect(a.ctx, addr)
+	if err != nil {
+		fmt.Printf("Error connecting to node %s: %s\n", addr, err.Error())
+		return err
+	}
+
+	fmt.Printf("Connected to node %s\n", addr)
+	return nil
 }
