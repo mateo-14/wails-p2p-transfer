@@ -1,90 +1,77 @@
-import { StartP2P, ConnectToNode } from '../wailsjs/go/main/App';
-import { useState } from 'preact/hooks';
+import { OnFrontendLoad } from '../wailsjs/go/main/App';
+import { useEffect, useState } from 'preact/hooks';
 import { h } from 'preact';
-import { main } from '../wailsjs/go/models';
-import { JSXInternal } from 'preact/src/jsx';
-
-type HostDataState = (main.HostData & { publicAddress: string }) | null;
+import { AppError, ErrP2PAlreadyStarted } from './errors';
+import { Router } from 'preact-router';
+import Peers from './menu/peers';
+import { hostDataStore } from './stores/hostData.store';
+import {
+  onPeerConnected,
+  onPeerDisconnected,
+  unsubscribePeerConnected,
+  unsubscribePeerDisconnected
+} from './services/p2pService';
+import { updatePeerState } from "./stores/peers.store";
 
 const IP_REGEX = '/((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d).?\\b){4}/';
 export function App(props: any) {
-  const [hostData, setHostData] = useState<HostDataState>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const startP2P = () => {
-    setHostData(null);
-
-    StartP2P()
+  useEffect(() => {
+    OnFrontendLoad()
       .then(data => {
         fetch('https://api.ipify.org')
           .then(res => res.text())
           .then(ip => {
             const publicAddress = data.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
-
-            setHostData({
+            hostDataStore.value = {
               ...data,
-              address: `${data.address}/p2p/${data.id}}`,
-              publicAddress: `${publicAddress}/p2p/${data.id}`,
+              address: `${data.address}/p2p`,
+              publicAddress: `${publicAddress}/p2p`
+            };
+
+            onPeerConnected(id => {
+              updatePeerState(id, 'connected')
             });
+
+            onPeerDisconnected(id => {
+              updatePeerState(id, 'disconnected')
+            });
+
+            setIsLoading(false);
           });
       })
-      .catch(err => {});
-  };
-
-  const copyPublicAddress = () => {
-    if (hostData === null) return;
-
-    navigator.clipboard.writeText(`${hostData.publicAddress}/${hostData.id}`);
-  };
-
-
-  const submitConnect = (e: h.JSX.TargetedEvent<HTMLFormElement, Event>) => {
-    e.preventDefault();
-    const address = e.currentTarget.address.value;
-    if (address === '') return;
-
-    ConnectToNode(address)
-      .then(() => {
-        console.log('Connected');
-      })
-      .catch(err => {
+      .catch((err: AppError) => {
         console.log(err);
+        if (err === ErrP2PAlreadyStarted) {
+          setIsLoading(false);
+        }
       });
-  };
+
+    return () => {
+      unsubscribePeerConnected();
+      unsubscribePeerDisconnected();
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div class="h-screen flex justify-center items-center bg-zinc-800">
+        <p class="animate-pulse text-3xl">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-    <div class="min-h-screen bg-zinc-900">
-      {hostData ? (
-        <>
-          <div>
-              <p>Your node ID is: {hostData.id}</p>
-              <p>
-                Addresses: local: {hostData.address}, public: {hostData.publicAddress}
-              </p>
-              <p>
+    <div class="h-screen flex bg-zinc-800">
+      {/* Menu */}
+      <div class="w-16 bg-zinc-900/70 h-full">Menu</div>
 
-              </p>
-          </div>
-          <Button onClick={copyPublicAddress}>Copy public address to share</Button>
-
-          <form onSubmit={submitConnect} class="w-full">
-            <label htmlFor="address-input">Connect to: </label>
-            <input type="text" id="address-input" class="text-black w-full" name="address" />
-            <Button>Connect</Button>
-          </form>
-        </>
-      ) : (
-        <Button onClick={startP2P}>Start P2P</Button>
-      )}
+      <div class="flex-1 min-w-0">
+        <Router url="/peers">
+          <Peers path="/peers/:rest*" />
+        </Router>
+      </div>
     </div>
-  );
-}
-
-function Button(props: JSXInternal.IntrinsicElements['button']) {
-  return (
-    <button
-      class="bg-purple-700 py-2 px-3 rounded-md text-sm font-semibold hover:bg-purple-600 hover:shadow-lg active:shadow-lg hover:shadow-purple-600/20 active:shadow-purple-600/50 transition-all"
-      {...props}
-    >
-      {props.children}
-    </button>
   );
 }

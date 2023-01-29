@@ -1,4 +1,4 @@
-export namespace main {
+export namespace p2p {
 	
 	export class HostData {
 	    address: string;

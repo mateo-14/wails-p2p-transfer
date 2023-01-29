@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/mateo-14/wails-p2p-transfer/p2p"
-
-	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// Errors
+var ErrP2PAlreadyStarted = errors.New("P2P already started")
 
 // App struct
 type App struct {
@@ -27,74 +29,47 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
-}
-
-func loadPrivateKey() (crypto.PrivKey, error) {
-	file, err := os.ReadFile("private.key")
-	if err != nil {
-		return nil, err
+func (a *App) startP2P() (*p2p.HostData, error) {
+	if a.p2p != nil {
+		runtime.LogInfo(a.ctx, "P2P already started")
+		return a.p2p.GetHostData(), nil
 	}
 
-	return crypto.UnmarshalPrivateKey(file)
-}
+	appn := &AppNotifiee{}
+	p2p, err := p2p.New(appn)
 
-func storePrivateKey(privk crypto.PrivKey) error {
-	privkb, err := crypto.MarshalPrivateKey(privk)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile("private.key", privkb, 0644)
-}
-
-func generatePrivateKey() (crypto.PrivKey, error) {
-	privk, _, err := crypto.GenerateKeyPair(crypto.RSA, 2048)
-	return privk, err
-}
-
-type HostData struct {
-	Addr string `json:"address"`
-	Id   string `json:"id"`
-}
-
-func (a *App) StartP2P() (*HostData, error) {
-	privk, err := loadPrivateKey()
-	if err != nil {
-		privk, err = generatePrivateKey()
-		if err != nil {
-			panic(err)
-		}
-
-		err = storePrivateKey(privk)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	p2p, err := p2p.New(privk)
 	if err != nil {
 		return nil, err
 	}
 
 	a.p2p = p2p
 
-	return &HostData{
-		Addr: p2p.Addrs()[0].String(),
-		Id:   p2p.Id(),
-	}, nil
+	return a.p2p.GetHostData(), nil
 
 }
 
-func (a *App) ConnectToNode(addr string) error {
-	err := a.p2p.Connect(a.ctx, addr)
+func (a *App) ConnectToNode(addr string, id string) error {
+	nodeaddr := fmt.Sprintf("%s/%s", addr, id)
+
+	err := a.p2p.Connect(a.ctx, nodeaddr)
 	if err != nil {
-		fmt.Printf("Error connecting to node %s: %s\n", addr, err.Error())
+		runtime.LogErrorf(a.ctx, "Error connecting to node %s: %s\n", nodeaddr, err.Error())
 		return err
 	}
 
-	fmt.Printf("Connected to node %s\n", addr)
+	runtime.LogInfof(a.ctx, "Connected to node %s\n", nodeaddr)
 	return nil
+	/*
+		 	time.Sleep(5 * time.Second)
+			fmt.Println("Connected to node")
+			go func() {
+				time.Sleep(10 * time.Second)
+				runtime.EventsEmit(a.ctx, "peer:disconnected", id)
+			}()
+			return nil
+	*/
+}
+
+func (a *App) OnFrontendLoad() (*p2p.HostData, error) {
+	return a.startP2P()
 }

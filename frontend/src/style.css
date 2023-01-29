@@ -1,6 +1,6 @@
 html {
-    text-align: center;
     color: white;
+
 }
 
 body {
@@ -18,10 +18,6 @@ body {
     url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
 }
 
-#app {
-    height: 100vh;
-    text-align: center;
-}
 
 @tailwind base;
 @tailwind components;
