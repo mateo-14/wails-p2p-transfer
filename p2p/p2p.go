@@ -149,6 +149,7 @@ func (p *P2P) messageHandler(s network.Stream) {
 			fmt.Println("Error writing to stream: ", err)
 		}
 		fmt.Printf("Wrote %d bytes to stream\n", n)
+		s.Close()
 		/* for {
 			n, err := s.Write([]byte{1})
 			if err != nil {
@@ -162,16 +163,26 @@ func (p *P2P) messageHandler(s network.Stream) {
 
 	go func() {
 		scanner := bufio.NewScanner(s)
-
 		for scanner.Scan() {
-			fmt.Println(scanner.Bytes())
+			b := scanner.Bytes()
+			fmt.Printf("Read %d bytes from stream: %s\n", len(b), b)
+			var msg Message
+			gob.NewDecoder(bytes.NewReader(b)).Decode(&msg)
+			fmt.Printf("Message: %+v\n", msg)
 		}
-		/* buf := new(bytes.Buffer)
-		io.Copy(buf, s)
+
+		/* 	buf := new(bytes.Buffer)
+		copied, err := io.Copy(buf, s)
+
+		if err != nil {
+			fmt.Println("Error reading from stream: ", err)
+		}
+
+		fmt.Printf("Read %d bytes from stream\n", copied)
 
 		dec := gob.NewDecoder(buf)
 		var msg Message
-		err := dec.Decode(&msg)
+		err = dec.Decode(&msg)
 
 		if err != nil {
 			fmt.Println("Error reading from stream: ", err)
