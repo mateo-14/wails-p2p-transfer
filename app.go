@@ -6,8 +6,9 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"os"
+	"path"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mateo-14/wails-p2p-transfer/p2p"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -71,36 +72,36 @@ func (a *App) OnFrontendLoad() (*p2p.HostData, error) {
 
 func (a *App) onMessage(mh *p2p.MessageHandler) {
 	mh.HandleRequest(p2p.GetFiles, func(req *p2p.MessageRequest) {
-		var payload p2p.PayloadTest
-		dec := gob.NewDecoder(bytes.NewReader(req.Message.Payload))
-		dec.Decode(&payload)
+		homeDir, _ := os.UserHomeDir()
+		entries, _ := os.ReadDir(path.Join(homeDir, "Downloads"))
+		files := make([]string, 0, len(entries))
 
-		runtime.LogInfof(a.ctx, "Message received: %s", payload)
+		for _, entry := range entries {
+			files = append(files, entry.Name())
+		}
 
-		/* 	respayload := TestResponse{Text: "World!"}
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
-		err := enc.Encode(&respayload)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error encoding payload: %s", err.Error())
-			return
-		} */
+		enc.Encode(files)
 
-		req.Write([]byte("Hello World!"))
+		req.Write(buf.Bytes())
 	})
 }
 
 func (a *App) GetPeerSharedFiles(peerID string) ([]string, error) {
-	/* 	payload := PayloadTest{Text: "Hello"}
-	   	var buf bytes.Buffer
-	   	enc := gob.NewEncoder(&buf)
-	   	enc.Encode(payload)
-	*/
-	res, err := a.p2p.SendMessage(a.ctx, peer.ID(peerID), p2p.GetFiles, nil)
+	res, err := a.p2p.SendMessage(a.ctx, peerID, p2p.GetFiles, nil)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(res)
-	return nil, nil
+
+	var files []string
+	dec := gob.NewDecoder(bytes.NewReader(res.Payload))
+	err = dec.Decode(&files)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
 
 }

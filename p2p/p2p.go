@@ -130,8 +130,14 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
-func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, requestID RequestID, payload []byte) (*Message, error) {
-	s, err := p.host.NewStream(ctx, peerID, MessageProtocol)
+func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestID, payload []byte) (*Message, error) {
+	peerIDDecoded, err := peer.Decode(peerID)
+	if err != nil {
+		runtime.LogErrorf(ctx, "SendMessage: Error decoding peerID: %s\n", err.Error())
+		return nil, err
+	}
+
+	s, err := p.host.NewStream(ctx, peerIDDecoded, MessageProtocol)
 
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error creating stream: %s\n", err.Error())
