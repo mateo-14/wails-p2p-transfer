@@ -33,7 +33,7 @@ func NewMessageHandler(ctx context.Context, s network.Stream) *MessageHandler {
 		handlers: make(map[MessageID]MessageRequestHandler),
 	}
 
-	msgh.handle(ctx)
+	go msgh.handle(ctx)
 
 	return msgh
 }
@@ -58,6 +58,7 @@ func (m *MessageHandler) handle(ctx context.Context) {
 }
 
 func (m *MessageHandler) HandleRequest(msgID MessageID, handler MessageRequestHandler) {
+	fmt.Printf("Registering handler for message: %s\n", msgID)
 	m.handlers[MessageID(msgID)] = handler
 }
 
