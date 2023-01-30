@@ -42,19 +42,26 @@ func (m *MessageHandler) handle(ctx context.Context) {
 	var msg Message
 	err := messagebToMessage(m.s, &msg)
 	if err != nil {
-		fmt.Println("Error reading from stream: ", err)
+		runtime.LogErrorf(ctx, "MessageHandler: Error reading from stream: %s\n", err)
 		return
 	}
 
 	handler, ok := m.handlers[msg.ID]
 	if !ok {
-		runtime.LogErrorf(ctx, "SendMessage: No handler for message: %s\n", msg.ID)
+		runtime.LogErrorf(ctx, "MessageHandler: No handler for message: %s\n", msg.ID)
 		m.s.Close()
 		return
 	}
 
+	runtime.LogInfof(ctx, "MessageHandler: Handler for message \"%s\" found. Handling message.\n", msg.ID)
 	handler(&msg, m.s)
-	m.s.Close()
+
+	err = m.s.Close()
+	if err != nil {
+		runtime.LogErrorf(ctx, "MessageHandler: Error closing stream: %s\n", err)
+	}
+
+	runtime.LogInfo(ctx, "MessageHandler: Stream closed")
 }
 
 func (m *MessageHandler) HandleRequest(msgID MessageID, handler MessageRequestHandler) {
