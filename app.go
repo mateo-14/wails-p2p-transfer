@@ -66,15 +66,15 @@ func (a *App) OnFrontendLoad() (*p2p.HostData, error) {
 	return a.startP2P()
 }
 
+type TestResponse struct {
+	Text string
+}
+
 func (a *App) onMessage(mh *p2p.MessageHandler) {
 	mh.HandleRequest("test", func(req *p2p.MessageRequest) {
 		runtime.LogInfof(a.ctx, "Message received: %s", req.Message.Payload)
 
-		payload := struct {
-			Text string
-		}{
-			Text: "Hello from the other side",
-		}
+		payload := TestResponse{Text: "World!"}
 
 		req.Write(payload)
 	})
