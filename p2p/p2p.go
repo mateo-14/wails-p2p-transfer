@@ -16,6 +16,13 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+type MessageType int64
+
+const (
+	Request MessageType = iota
+	Response
+)
+
 type P2P struct {
 	host     host.Host
 	Notifiee network.Notifiee
@@ -27,6 +34,7 @@ type HostData struct {
 }
 
 type Message struct {
+	Type    MessageType
 	Name    string
 	Payload interface{}
 }
@@ -124,6 +132,13 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
+func (p *P2P) messageToBytes(msg *Message) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(msg)
+	return buf.Bytes(), err
+}
+
 func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) error {
 	s, err := p.host.NewStream(ctx, peerID, MessageProtocol)
 
@@ -132,55 +147,26 @@ func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) erro
 		return err
 	}
 
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(msg)
-
+	msgb, err := p.messageToBytes(&msg)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error encoding message: %s\n", err.Error())
 		return err
 	}
 
-	n, err := s.Write(buf.Bytes())
+	n, err := s.Write(msgb)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
 	}
 
 	fmt.Printf("Wrote %d bytes to stream\n", n)
+	p.messageHandler(s)
 
 	return err
 }
 
 func (p *P2P) messageHandler(s network.Stream) {
-	// Manage received messages
+	// Manage request type messages
 	go func() {
-		/* 		scanner := bufio.NewScanner(s)
-		   		for scanner.Scan() {
-		   			b := scanner.Bytes()
-		   			fmt.Printf("Read %d bytes from stream: %s\n", len(b), b)
-		   			var msg Message
-		   			gob.NewDecoder(bytes.NewReader(b)).Decode(&msg)
-		   			fmt.Printf("Message: %+v\n", msg)
-		   		}
-		*/
-		/* buf := new(bytes.Buffer)
-		copied, err := io.Copy(buf, s)
-
-		if err != nil {
-			fmt.Println("Error reading from stream: ", err)
-		}
-
-		fmt.Printf("Read %d bytes from stream\n", copied)
-
-		dec := gob.NewDecoder(buf)
-		var msg Message
-		err = dec.Decode(&msg)
-
-		if err != nil {
-			fmt.Println("Error reading from stream: ", err)
-			return
-		} */
-
 		var msg Message
 		dec := gob.NewDecoder(s)
 		err := dec.Decode(&msg)
@@ -190,6 +176,21 @@ func (p *P2P) messageHandler(s network.Stream) {
 		}
 
 		fmt.Printf("Message: %+v\n", msg)
+		switch msg.Type {
+		case Request:
+			fmt.Printf("Request: %+v\n", msg)
+			msgb, err := p.messageToBytes(&msg)
+
+			if err != nil {
+				runtime.LogErrorf(context.Background(), "SendMessage: Error encoding message: %s\n", err.Error())
+				return
+			}
+
+			s.Write(msgb)
+			s.Close()
+		case Response:
+			fmt.Printf("Response: %+v\n", msg)
+		}
 	}()
 }
 
