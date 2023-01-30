@@ -74,12 +74,16 @@ type TestResponse struct {
 
 func (a *App) onMessage(mh *p2p.MessageHandler) {
 	mh.HandleRequest("test", func(req *p2p.MessageRequest) {
-		runtime.LogInfof(a.ctx, "Message received: %s", string(req.Message.Payload))
+		var payload p2p.PayloadTest
+		dec := gob.NewDecoder(bytes.NewReader(req.Message.Payload))
+		dec.Decode(&payload)
 
-		payload := TestResponse{Text: "World!"}
+		runtime.LogInfof(a.ctx, "Message received: %s", payload)
+
+		respayload := TestResponse{Text: "World!"}
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
-		err := enc.Encode(&payload)
+		err := enc.Encode(&respayload)
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Error encoding payload: %s", err.Error())
 			return

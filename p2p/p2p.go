@@ -1,7 +1,9 @@
 package p2p
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
 	"os"
 
@@ -100,6 +102,10 @@ func (p *P2P) Id() string {
 	return p.host.ID().String()
 }
 
+type PayloadTest struct {
+	Text string
+}
+
 func (p *P2P) Connect(ctx context.Context, addr string) error {
 	addrInfo, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
@@ -116,7 +122,13 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 		return err
 	}
 
-	p.SendMessage(ctx, peerInfo.ID, Message{ID: "test", Payload: []byte("Hello")})
+	payload := PayloadTest{Text: "Hello"}
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	enc.Encode(payload)
+
+	res, _ := p.SendMessage(ctx, peerInfo.ID, Message{ID: "test", Payload: buf.Bytes()})
+	fmt.Println(res.Payload)
 	return nil
 }
 
