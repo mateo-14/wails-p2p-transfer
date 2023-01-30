@@ -175,11 +175,14 @@ func (p *P2P) messageHandler(s network.Stream) {
 			return
 		}
 
-		fmt.Printf("Message: %+v\n", msg)
 		switch msg.Type {
 		case Request:
 			fmt.Printf("Request: %+v\n", msg)
-			msgb, err := p.messageToBytes(&msg)
+			msgb, err := p.messageToBytes(&Message{
+				Type:    Response,
+				Name:    "Hello",
+				Payload: "World",
+			})
 
 			if err != nil {
 				runtime.LogErrorf(context.Background(), "SendMessage: Error encoding message: %s\n", err.Error())
