@@ -1,11 +1,11 @@
 package p2p
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/gob"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -130,7 +130,6 @@ func (p *P2P) GetHostData() *HostData {
 }
 
 func (p *P2P) messageHandler(s network.Stream) {
-	s.Conn().ID()
 	go func() {
 		msg := Message{
 			Name:    "Hello",
@@ -145,10 +144,11 @@ func (p *P2P) messageHandler(s network.Stream) {
 			fmt.Println("Error encoding message: ", err)
 		}
 
-		_, err = s.Write(buf.Bytes())
+		n, err := s.Write(buf.Bytes())
 		if err != nil {
 			fmt.Println("Error writing to stream: ", err)
 		}
+		fmt.Printf("Wrote %d bytes to stream\n", n)
 		/* for {
 			n, err := s.Write([]byte{1})
 			if err != nil {
@@ -161,20 +161,23 @@ func (p *P2P) messageHandler(s network.Stream) {
 	}()
 
 	go func() {
-		for {
-			buf := new(bytes.Buffer)
-			io.Copy(buf, s)
+		scanner := bufio.NewScanner(s)
 
-			dec := gob.NewDecoder(buf)
-			var msg Message
-			err := dec.Decode(&msg)
-
-			if err != nil {
-				fmt.Println("Error reading from stream: ", err)
-				return
-			}
-
+		for scanner.Scan() {
+			fmt.Println(scanner.Bytes())
 		}
+		/* buf := new(bytes.Buffer)
+		io.Copy(buf, s)
+
+		dec := gob.NewDecoder(buf)
+		var msg Message
+		err := dec.Decode(&msg)
+
+		if err != nil {
+			fmt.Println("Error reading from stream: ", err)
+			return
+		} */
+
 	}()
 }
 
