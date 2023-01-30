@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -14,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type P2P struct {
@@ -113,12 +113,7 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 		return err
 	}
 
-	s, err := p.host.NewStream(ctx, peerInfo.ID, MessageProtocol)
-	if err != nil {
-		return err
-	}
-
-	p.messageHandler(s)
+	p.SendMessage(ctx, peerInfo.ID, Message{Name: "Hello", Payload: "World"})
 	return nil
 }
 
@@ -129,38 +124,35 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
+func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) error {
+	s, err := p.host.NewStream(ctx, peerID, MessageProtocol)
+
+	if err != nil {
+		runtime.LogErrorf(ctx, "SendMessage: Error creating stream: %s\n", err.Error())
+		return err
+	}
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err = enc.Encode(msg)
+
+	if err != nil {
+		runtime.LogErrorf(ctx, "SendMessage: Error encoding message: %s\n", err.Error())
+		return err
+	}
+
+	n, err := s.Write(buf.Bytes())
+	if err != nil {
+		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
+	}
+
+	fmt.Printf("Wrote %d bytes to stream\n", n)
+
+	return err
+}
+
 func (p *P2P) messageHandler(s network.Stream) {
-	go func() {
-		msg := Message{
-			Name:    "Hello",
-			Payload: "World",
-		}
-
-		var buf bytes.Buffer
-		enc := gob.NewEncoder(&buf)
-		err := enc.Encode(msg)
-
-		if err != nil {
-			fmt.Println("Error encoding message: ", err)
-		}
-
-		n, err := s.Write(buf.Bytes())
-		if err != nil {
-			fmt.Println("Error writing to stream: ", err)
-		}
-		fmt.Printf("Wrote %d bytes to stream\n", n)
-		s.Close()
-		/* for {
-			n, err := s.Write([]byte{1})
-			if err != nil {
-				fmt.Println("Ping: Error writing to stream: ", err)
-				return
-			}
-
-			fmt.Printf("Ping: Wrote %d bytes to stream\n", n)
-		} */
-	}()
-
+	// Manage received messages
 	go func() {
 		/* 		scanner := bufio.NewScanner(s)
 		   		for scanner.Scan() {
@@ -171,7 +163,7 @@ func (p *P2P) messageHandler(s network.Stream) {
 		   			fmt.Printf("Message: %+v\n", msg)
 		   		}
 		*/
-		buf := new(bytes.Buffer)
+		/* buf := new(bytes.Buffer)
 		copied, err := io.Copy(buf, s)
 
 		if err != nil {
@@ -187,8 +179,17 @@ func (p *P2P) messageHandler(s network.Stream) {
 		if err != nil {
 			fmt.Println("Error reading from stream: ", err)
 			return
+		} */
+
+		var msg Message
+		dec := gob.NewDecoder(s)
+		err := dec.Decode(&msg)
+		if err != nil {
+			fmt.Println("Error reading from stream: ", err)
+			return
 		}
 
+		fmt.Printf("Message: %+v\n", msg)
 	}()
 }
 
