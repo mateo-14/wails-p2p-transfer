@@ -1,11 +1,11 @@
 package p2p
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -162,16 +162,16 @@ func (p *P2P) messageHandler(s network.Stream) {
 	}()
 
 	go func() {
-		scanner := bufio.NewScanner(s)
-		for scanner.Scan() {
-			b := scanner.Bytes()
-			fmt.Printf("Read %d bytes from stream: %s\n", len(b), b)
-			var msg Message
-			gob.NewDecoder(bytes.NewReader(b)).Decode(&msg)
-			fmt.Printf("Message: %+v\n", msg)
-		}
-
-		/* 	buf := new(bytes.Buffer)
+		/* 		scanner := bufio.NewScanner(s)
+		   		for scanner.Scan() {
+		   			b := scanner.Bytes()
+		   			fmt.Printf("Read %d bytes from stream: %s\n", len(b), b)
+		   			var msg Message
+		   			gob.NewDecoder(bytes.NewReader(b)).Decode(&msg)
+		   			fmt.Printf("Message: %+v\n", msg)
+		   		}
+		*/
+		buf := new(bytes.Buffer)
 		copied, err := io.Copy(buf, s)
 
 		if err != nil {
@@ -187,7 +187,7 @@ func (p *P2P) messageHandler(s network.Stream) {
 		if err != nil {
 			fmt.Println("Error reading from stream: ", err)
 			return
-		} */
+		}
 
 	}()
 }
