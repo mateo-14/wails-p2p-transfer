@@ -60,15 +60,6 @@ func (a *App) ConnectToNode(addr string, id string) error {
 	}
 
 	return nil
-	/*
-		 	time.Sleep(5 * time.Second)
-			fmt.Println("Connected to node")
-			go func() {
-				time.Sleep(10 * time.Second)
-				runtime.EventsEmit(a.ctx, "peer:disconnected", id)
-			}()
-			return nil
-	*/
 }
 
 func (a *App) OnFrontendLoad() (*p2p.HostData, error) {
