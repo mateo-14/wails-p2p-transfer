@@ -10,10 +10,14 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type MessageID string
+type RequestID string
+
+const (
+	GetFiles RequestID = "get/files"
+)
 
 type Message struct {
-	ID      MessageID
+	ID      RequestID
 	Payload []byte
 }
 
@@ -22,14 +26,14 @@ type MessageRequestHandler func(*MessageRequest)
 // Handle incoming messages
 type MessageHandler struct {
 	s        network.Stream
-	handlers map[MessageID]MessageRequestHandler
+	handlers map[RequestID]MessageRequestHandler
 }
 
 // Creates a new message handler
 func NewMessageHandler(ctx context.Context, s network.Stream) *MessageHandler {
 	msgh := &MessageHandler{
 		s:        s,
-		handlers: make(map[MessageID]MessageRequestHandler),
+		handlers: make(map[RequestID]MessageRequestHandler),
 	}
 
 	go msgh.handle(ctx)
@@ -66,8 +70,8 @@ func (m *MessageHandler) handle(ctx context.Context) {
 	runtime.LogInfof(ctx, "MessageHandler: Stream for message (%s) closed.\n", msg.ID)
 }
 
-func (m *MessageHandler) HandleRequest(msgID MessageID, handler MessageRequestHandler) {
-	m.handlers[MessageID(msgID)] = handler
+func (m *MessageHandler) HandleRequest(msgID RequestID, handler MessageRequestHandler) {
+	m.handlers[RequestID(msgID)] = handler
 }
 
 func messageToBytes(msg *Message) ([]byte, error) {

@@ -1,9 +1,7 @@
 package p2p
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"fmt"
 	"os"
 
@@ -122,13 +120,6 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 		return err
 	}
 
-	payload := PayloadTest{Text: "Hello"}
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	enc.Encode(payload)
-
-	res, _ := p.SendMessage(ctx, peerInfo.ID, Message{ID: "test", Payload: buf.Bytes()})
-	fmt.Println(res.Payload)
 	return nil
 }
 
@@ -139,7 +130,7 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
-func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) (*Message, error) {
+func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, requestID RequestID, payload []byte) (*Message, error) {
 	s, err := p.host.NewStream(ctx, peerID, MessageProtocol)
 
 	if err != nil {
@@ -147,6 +138,10 @@ func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) (*Me
 		return nil, err
 	}
 
+	msg := Message{
+		ID:      requestID,
+		Payload: payload,
+	}
 	msgb, err := messageToBytes(&msg)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error encoding message: %s\n", err.Error())

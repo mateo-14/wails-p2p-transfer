@@ -4,4 +4,6 @@ import {p2p} from '../models';
 
 export function ConnectToNode(arg1:string,arg2:string):Promise<void>;
 
+export function GetPeerSharedFiles(arg1:string):Promise<Array<string>>;
+
 export function OnFrontendLoad():Promise<p2p.HostData>;

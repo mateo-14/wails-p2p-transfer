@@ -1,8 +1,8 @@
 import { h } from 'preact';
 import Button from '../../components/Button';
-import { PeerState, getPeer, peersStore, updatePeerState } from '../../stores/peers.store';
+import { getPeer, updatePeerState } from '../../stores/peers.store';
 import classNames from 'classnames';
-import { connectToPeer } from '../../services/p2pService';
+import { connectToPeer, getPeerFiles } from '../../services/p2pService';
 
 type PeerProp = {
   path: string;
@@ -19,6 +19,11 @@ export default function Peer(props: PeerProp) {
   const handleConnect = () => {
     updatePeerState(peer.id, 'connecting');
     connectToPeer(peer.address, peer.id)
+      .then(() => {
+        getPeerFiles(peer.id).then((data) => {
+            console.log(data)
+        })
+      })
       .catch(() => updatePeerState(peer.id, 'error'));
   };
 
