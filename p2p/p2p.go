@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -14,13 +15,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-)
-
-type MessageType int64
-
-const (
-	Request MessageType = iota
-	Response
 )
 
 type P2P struct {
@@ -34,7 +28,6 @@ type HostData struct {
 }
 
 type Message struct {
-	Type    MessageType
 	Name    string
 	Payload interface{}
 }
@@ -77,7 +70,7 @@ func (p *P2P) start(privk crypto.PrivKey) error {
 	}
 
 	p.host = host
-	host.SetStreamHandler(MessageProtocol, p.messageHandler)
+	host.SetStreamHandler(MessageProtocol, p.messageRequestHandler)
 	return err
 }
 
@@ -139,6 +132,12 @@ func (p *P2P) messageToBytes(msg *Message) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
+func (p *P2P) messagebToMessage(r io.Reader, msg *Message) error {
+	dec := gob.NewDecoder(r)
+	err := dec.Decode(msg)
+	return err
+}
+
 func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) error {
 	s, err := p.host.NewStream(ctx, peerID, MessageProtocol)
 
@@ -153,48 +152,56 @@ func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) erro
 		return err
 	}
 
-	n, err := s.Write(msgb)
+	_, err = s.Write(msgb)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
+		return err
 	}
 
-	fmt.Printf("Wrote %d bytes to stream\n", n)
-	p.messageHandler(s)
+	res, err := p.messageResponseHandler(s)
+	if err != nil {
+		runtime.LogErrorf(ctx, "SendMessage: Error reading response: %s\n", err.Error())
+		return err
+	}
 
-	return err
+	fmt.Printf("Response: %+v\n", res)
+
+	return nil
 }
 
-func (p *P2P) messageHandler(s network.Stream) {
-	// Manage request type messages
-	go func() {
-		var msg Message
-		dec := gob.NewDecoder(s)
-		err := dec.Decode(&msg)
-		if err != nil {
-			fmt.Println("Error reading from stream: ", err)
-			return
-		}
+func (p *P2P) messageRequestHandler(s network.Stream) {
+	var msg Message
+	err := p.messagebToMessage(s, &msg)
+	if err != nil {
+		fmt.Println("Error reading from stream: ", err)
+		return
+	}
 
-		switch msg.Type {
-		case Request:
-			fmt.Printf("Request: %+v\n", msg)
-			msgb, err := p.messageToBytes(&Message{
-				Type:    Response,
-				Name:    "Hello",
-				Payload: "World",
-			})
+	fmt.Printf("Request: %+v\n", msg)
 
-			if err != nil {
-				runtime.LogErrorf(context.Background(), "SendMessage: Error encoding message: %s\n", err.Error())
-				return
-			}
+	msgb, err := p.messageToBytes(&Message{
+		Name:    "Hello",
+		Payload: "World",
+	})
+	if err != nil {
+		runtime.LogErrorf(context.Background(), "SendMessage: Error encoding message: %s\n", err.Error())
+		return
+	}
 
-			s.Write(msgb)
-			s.Close()
-		case Response:
-			fmt.Printf("Response: %+v\n", msg)
-		}
-	}()
+	// Write response and close stream
+	s.Write(msgb)
+	s.Close()
+}
+
+func (p *P2P) messageResponseHandler(r io.Reader) (*Message, error) {
+	var msg Message
+	err := p.messagebToMessage(r, &msg)
+	if err != nil {
+		fmt.Println("Error reading from stream: ", err)
+		return nil, err
+	}
+
+	return &msg, nil
 }
 
 /* func (*P2P) streamHandler(s network.Stream) {
