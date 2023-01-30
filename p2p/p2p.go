@@ -27,7 +27,7 @@ type HostData struct {
 
 const MessageProtocol = "/msg/1.0.0"
 
-func New(notifiee network.Notifiee) (*P2P, error) {
+func NewP2P(ctx context.Context, notifiee network.Notifiee) (*P2P, error) {
 	privk, err := loadPrivateKey()
 	if err != nil {
 		privk, err = generatePrivateKey()
@@ -46,7 +46,7 @@ func New(notifiee network.Notifiee) (*P2P, error) {
 		p.Notifiee = notifiee
 	}
 
-	err = p.start(privk)
+	err = p.start(ctx, privk)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func New(notifiee network.Notifiee) (*P2P, error) {
 	return p, nil
 }
 
-func (p *P2P) start(privk crypto.PrivKey) error {
+func (p *P2P) start(ctx context.Context, privk crypto.PrivKey) error {
 	host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4000"), libp2p.Identity(privk))
 
 	if p.Notifiee != nil {
@@ -65,7 +65,7 @@ func (p *P2P) start(privk crypto.PrivKey) error {
 	p.host = host
 
 	host.SetStreamHandler(MessageProtocol, func(s network.Stream) {
-		msgh := NewMessageHandler(s)
+		msgh := NewMessageHandler(ctx, s)
 		msgh.HandleRequest("test", func(m *Message, w io.Writer) {
 			fmt.Printf("Request: %+v\n", m)
 
@@ -86,7 +86,7 @@ func (p *P2P) start(privk crypto.PrivKey) error {
 	return err
 }
 
-func (p *P2P) RegenerateKey() error {
+func (p *P2P) RegenerateKey(ctx context.Context) error {
 	p.host.Close()
 
 	privk, err := generatePrivateKey()
@@ -99,7 +99,7 @@ func (p *P2P) RegenerateKey() error {
 		return err
 	}
 
-	return p.start(privk)
+	return p.start(ctx, privk)
 }
 
 func (p *P2P) Addrs() []multiaddr.Multiaddr {

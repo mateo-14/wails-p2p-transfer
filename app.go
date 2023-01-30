@@ -38,7 +38,7 @@ func (a *App) startP2P() (*p2p.HostData, error) {
 	appn := &AppNotifiee{
 		ctx: a.ctx,
 	}
-	p2p, err := p2p.New(appn)
+	p2p, err := p2p.NewP2P(a.ctx, appn)
 
 	if err != nil {
 		return nil, err

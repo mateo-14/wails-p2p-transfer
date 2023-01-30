@@ -27,18 +27,18 @@ type MessageHandler struct {
 }
 
 // Creates a new message handler
-func NewMessageHandler(s network.Stream) *MessageHandler {
+func NewMessageHandler(ctx context.Context, s network.Stream) *MessageHandler {
 	msgh := &MessageHandler{
 		s:        s,
 		handlers: make(map[MessageID]MessageRequestHandler),
 	}
 
-	msgh.handle()
+	msgh.handle(ctx)
 
 	return msgh
 }
 
-func (m *MessageHandler) handle() {
+func (m *MessageHandler) handle(ctx context.Context) {
 	var msg Message
 	err := messagebToMessage(m.s, &msg)
 	if err != nil {
@@ -48,7 +48,7 @@ func (m *MessageHandler) handle() {
 
 	handler, ok := m.handlers[msg.ID]
 	if !ok {
-		runtime.LogErrorf(context.Background(), "SendMessage: No handler for message: %s\n", msg.ID)
+		runtime.LogErrorf(ctx, "SendMessage: No handler for message: %s\n", msg.ID)
 		m.s.Close()
 		return
 	}
