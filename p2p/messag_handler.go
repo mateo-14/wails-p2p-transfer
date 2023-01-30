@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
-	"fmt"
 	"io"
 
 	"github.com/libp2p/go-libp2p/core/network"
@@ -18,7 +17,7 @@ type Message struct {
 	Payload interface{}
 }
 
-type MessageRequestHandler func(*Message, io.Writer)
+type MessageRequestHandler func(*MessageRequest)
 
 // Handle incoming messages
 type MessageHandler struct {
@@ -40,7 +39,7 @@ func NewMessageHandler(ctx context.Context, s network.Stream) *MessageHandler {
 
 func (m *MessageHandler) handle(ctx context.Context) {
 	var msg Message
-	err := messagebToMessage(m.s, &msg)
+	err := messageBToMessage(m.s, &msg)
 	if err != nil {
 		runtime.LogErrorf(ctx, "MessageHandler: Error reading from stream: %s\n", err)
 		return
@@ -53,19 +52,21 @@ func (m *MessageHandler) handle(ctx context.Context) {
 		return
 	}
 
-	runtime.LogInfof(ctx, "MessageHandler: Handler for message \"%s\" found. Handling message.\n", msg.ID)
-	handler(&msg, m.s)
+	runtime.LogInfof(ctx, "MessageHandler: Handler for message (%s) found. Message handled.\n", msg.ID)
+	handler(&MessageRequest{
+		&msg,
+		m.s,
+	})
 
 	err = m.s.Close()
 	if err != nil {
 		runtime.LogErrorf(ctx, "MessageHandler: Error closing stream: %s\n", err)
 	}
 
-	runtime.LogInfo(ctx, "MessageHandler: Stream closed")
+	runtime.LogInfof(ctx, "MessageHandler: Stream for message (%s) closed.\n", msg.ID)
 }
 
 func (m *MessageHandler) HandleRequest(msgID MessageID, handler MessageRequestHandler) {
-	fmt.Printf("Registering handler for message: %s\n", msgID)
 	m.handlers[MessageID(msgID)] = handler
 }
 
@@ -76,8 +77,28 @@ func messageToBytes(msg *Message) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func messagebToMessage(r io.Reader, msg *Message) error {
+func messageBToMessage(r io.Reader, msg *Message) error {
 	dec := gob.NewDecoder(r)
 	err := dec.Decode(msg)
 	return err
+}
+
+type MessageRequest struct {
+	Message *Message
+	w       io.Writer
+}
+
+func (m *MessageRequest) Write(payload interface{}) error {
+	res := Message{
+		ID:      m.Message.ID,
+		Payload: payload,
+	}
+
+	resb, err := messageToBytes(&res)
+	if err != nil {
+		return err
+	}
+
+	m.w.Write(resb)
+	return nil
 }

@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -18,6 +17,7 @@ import (
 type P2P struct {
 	host     host.Host
 	Notifiee network.Notifiee
+	msghcb   MessageHandlerCb
 }
 
 type HostData struct {
@@ -25,9 +25,11 @@ type HostData struct {
 	Id   string `json:"id"`
 }
 
+type MessageHandlerCb func(*MessageHandler)
+
 const MessageProtocol = "/msg/1.0.0"
 
-func NewP2P(ctx context.Context, notifiee network.Notifiee) (*P2P, error) {
+func NewP2P(ctx context.Context, notifiee network.Notifiee, msghcb MessageHandlerCb) (*P2P, error) {
 	privk, err := loadPrivateKey()
 	if err != nil {
 		privk, err = generatePrivateKey()
@@ -45,6 +47,8 @@ func NewP2P(ctx context.Context, notifiee network.Notifiee) (*P2P, error) {
 	if notifiee != nil {
 		p.Notifiee = notifiee
 	}
+
+	p.msghcb = msghcb
 
 	err = p.start(ctx, privk)
 	if err != nil {
@@ -66,21 +70,7 @@ func (p *P2P) start(ctx context.Context, privk crypto.PrivKey) error {
 
 	host.SetStreamHandler(MessageProtocol, func(s network.Stream) {
 		msgh := NewMessageHandler(ctx, s)
-		msgh.HandleRequest("test", func(m *Message, w io.Writer) {
-			fmt.Printf("Request: %+v\n", m)
-
-			resb, err := messageToBytes(&Message{
-				ID:      m.ID,
-				Payload: "World",
-			})
-
-			if err != nil {
-				runtime.LogErrorf(context.Background(), "SendMessage: Error encoding message: %s\n", err)
-				return
-			}
-
-			w.Write(resb)
-		})
+		p.msghcb(msgh)
 	})
 
 	return err
@@ -137,65 +127,35 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
-func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) error {
+func (p *P2P) SendMessage(ctx context.Context, peerID peer.ID, msg Message) (*Message, error) {
 	s, err := p.host.NewStream(ctx, peerID, MessageProtocol)
 
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error creating stream: %s\n", err.Error())
-		return err
+		return nil, err
 	}
 
 	msgb, err := messageToBytes(&msg)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error encoding message: %s\n", err.Error())
-		return err
+		return nil, err
 	}
 
 	_, err = s.Write(msgb)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
-		return err
+		return nil, err
 	}
 
 	var res Message
-	err = messagebToMessage(s, &res)
+	err = messageBToMessage(s, &res)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error reading response: %s\n", err.Error())
-		return err
+		return nil, err
 	}
 
-	fmt.Printf("Response: %+v\n", res)
-
-	return nil
+	return &res, nil
 }
-
-/*
-func writeCounter(s network.Stream) {
-
-	for {
-		<-time.After(time.Second)
-
-
-		n, err := s.Write([]byte("ping"))
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func readCounter(s network.Stream) {
-	for {
-		var counter uint64
-
-		err := binary.Read(s, binary.BigEndian, &counter)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("Received %d from %s\n", counter, s.ID())
-	}
-}
-*/
 
 func loadPrivateKey() (crypto.PrivKey, error) {
 	file, err := os.ReadFile("private.key")

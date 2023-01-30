@@ -38,7 +38,7 @@ func (a *App) startP2P() (*p2p.HostData, error) {
 	appn := &AppNotifiee{
 		ctx: a.ctx,
 	}
-	p2p, err := p2p.NewP2P(a.ctx, appn)
+	p2p, err := p2p.NewP2P(a.ctx, appn, a.onMessage)
 
 	if err != nil {
 		return nil, err
@@ -64,4 +64,18 @@ func (a *App) ConnectToNode(addr string, id string) error {
 
 func (a *App) OnFrontendLoad() (*p2p.HostData, error) {
 	return a.startP2P()
+}
+
+func (a *App) onMessage(mh *p2p.MessageHandler) {
+	mh.HandleRequest("test", func(req *p2p.MessageRequest) {
+		runtime.LogInfof(a.ctx, "Message received: %s", req.Message.Payload)
+
+		payload := struct {
+			Text string
+		}{
+			Text: "Hello from the other side",
+		}
+
+		req.Write(payload)
+	})
 }
