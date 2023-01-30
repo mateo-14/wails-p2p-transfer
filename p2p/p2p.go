@@ -1,8 +1,11 @@
 package p2p
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -23,7 +26,12 @@ type HostData struct {
 	Id   string `json:"id"`
 }
 
-const ProtocolPing = "/ping/1.0.0"
+type Message struct {
+	Name    string
+	Payload interface{}
+}
+
+const MessageProtocol = "/msg/1.0.0"
 
 func New(notifiee network.Notifiee) (*P2P, error) {
 	privk, err := loadPrivateKey()
@@ -61,10 +69,7 @@ func (p *P2P) start(privk crypto.PrivKey) error {
 	}
 
 	p.host = host
-	// host.SetStreamHandler(ProtocolPing, p.pingHandler)
-	for _, peer := range host.Peerstore().Peers() {
-		fmt.Println(peer)
-	}
+	host.SetStreamHandler(MessageProtocol, p.messageHandler)
 	return err
 }
 
@@ -108,12 +113,12 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 		return err
 	}
 
-	/* _, err = p.host.NewStream(ctx, peerInfo.ID, ProtocolPing)
+	s, err := p.host.NewStream(ctx, peerInfo.ID, MessageProtocol)
 	if err != nil {
 		return err
-	} */
+	}
 
-	// p.pingHandler(s)
+	p.messageHandler(s)
 	return nil
 }
 
@@ -124,11 +129,27 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
-/* func (p *P2P) pingHandler(s network.Stream) {
+func (p *P2P) messageHandler(s network.Stream) {
 	s.Conn().ID()
 	go func() {
-		for {
-			time.Sleep(time.Second)
+		msg := Message{
+			Name:    "Hello",
+			Payload: "World",
+		}
+
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		err := enc.Encode(msg)
+
+		if err != nil {
+			fmt.Println("Error encoding message: ", err)
+		}
+
+		_, err = s.Write(buf.Bytes())
+		if err != nil {
+			fmt.Println("Error writing to stream: ", err)
+		}
+		/* for {
 			n, err := s.Write([]byte{1})
 			if err != nil {
 				fmt.Println("Ping: Error writing to stream: ", err)
@@ -136,23 +157,26 @@ func (p *P2P) GetHostData() *HostData {
 			}
 
 			fmt.Printf("Ping: Wrote %d bytes to stream\n", n)
-		}
+		} */
 	}()
 
 	go func() {
 		for {
-			time.Sleep(time.Second)
-			buf := make([]byte, 1)
-			n, err := s.Read(buf)
+			buf := new(bytes.Buffer)
+			io.Copy(buf, s)
+
+			dec := gob.NewDecoder(buf)
+			var msg Message
+			err := dec.Decode(&msg)
+
 			if err != nil {
-				fmt.Println("Ping: Error reading from stream: ", err)
+				fmt.Println("Error reading from stream: ", err)
 				return
 			}
 
-			fmt.Printf("Ping: Read %d bytes from stream \n", n)
 		}
 	}()
-} */
+}
 
 /* func (*P2P) streamHandler(s network.Stream) {
 	go writeCounter(s)
