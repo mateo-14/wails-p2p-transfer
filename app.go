@@ -35,7 +35,9 @@ func (a *App) startP2P() (*p2p.HostData, error) {
 		return a.p2p.GetHostData(), nil
 	}
 
-	appn := &AppNotifiee{}
+	appn := &AppNotifiee{
+		ctx: a.ctx,
+	}
 	p2p, err := p2p.New(appn)
 
 	if err != nil {
@@ -57,7 +59,6 @@ func (a *App) ConnectToNode(addr string, id string) error {
 		return err
 	}
 
-	runtime.LogInfof(a.ctx, "Connected to node %s\n", nodeaddr)
 	return nil
 	/*
 		 	time.Sleep(5 * time.Second)

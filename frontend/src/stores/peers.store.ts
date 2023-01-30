@@ -15,7 +15,7 @@ export const peersStore = signal<PeerState[]>([
     state: 'disconnected'
   },
   {
-    id: 'QmQzCe3gFukuvLaZao1ZPmffUbMvvRMjwa9vguZB8uLkWU',
+    id: 'QmdberyhsY3DGE2pVjY1Etw7q3xiToHLb1BvXFvHySdACD',
     address: '/ip4/192.168.0.247/tcp/4000/p2p',
     name: 'Laptop',
     state: 'error'
