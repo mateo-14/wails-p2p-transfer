@@ -14,7 +14,7 @@ type MessageID string
 
 type Message struct {
 	ID      MessageID
-	Payload interface{}
+	Payload []byte
 }
 
 type MessageRequestHandler func(*MessageRequest)
@@ -88,7 +88,7 @@ type MessageRequest struct {
 	w       io.Writer
 }
 
-func (m *MessageRequest) Write(payload interface{}) error {
+func (m *MessageRequest) Write(payload []byte) error {
 	res := Message{
 		ID:      m.Message.ID,
 		Payload: payload,

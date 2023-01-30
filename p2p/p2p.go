@@ -116,7 +116,7 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 		return err
 	}
 
-	p.SendMessage(ctx, peerInfo.ID, Message{ID: "test", Payload: "Hello"})
+	p.SendMessage(ctx, peerInfo.ID, Message{ID: "test", Payload: []byte("Hello")})
 	return nil
 }
 

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"errors"
 	"fmt"
 
@@ -72,10 +74,17 @@ type TestResponse struct {
 
 func (a *App) onMessage(mh *p2p.MessageHandler) {
 	mh.HandleRequest("test", func(req *p2p.MessageRequest) {
-		runtime.LogInfof(a.ctx, "Message received: %s", req.Message.Payload)
+		runtime.LogInfof(a.ctx, "Message received: %s", string(req.Message.Payload))
 
 		payload := TestResponse{Text: "World!"}
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		err := enc.Encode(&payload)
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error encoding payload: %s", err.Error())
+			return
+		}
 
-		req.Write(payload)
+		req.Write(buf.Bytes())
 	})
 }
