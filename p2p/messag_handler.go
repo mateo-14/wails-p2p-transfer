@@ -16,12 +16,18 @@ const (
 	GetFiles RequestID = "get/files"
 )
 
-type Message struct {
-	ID      RequestID
-	Payload []byte
+type Response struct {
+	ID   RequestID
+	Body io.ReadCloser
 }
 
-type MessageRequestHandler func(*MessageRequest)
+type Request struct {
+	ID   RequestID
+	Body io.ReadCloser
+	io.WriteCloser
+}
+
+type MessageRequestHandler func(*Request)
 
 // Handle incoming messages
 type MessageHandler struct {
@@ -42,67 +48,61 @@ func NewMessageHandler(ctx context.Context, s network.Stream) *MessageHandler {
 }
 
 func (m *MessageHandler) handle(ctx context.Context) {
-	var msg Message
-	err := messageBToMessage(m.s, &msg)
+	var req Request
+	err := bytesToStruct(m.s, &req)
 	if err != nil {
 		runtime.LogErrorf(ctx, "MessageHandler: Error reading from stream: %s\n", err)
 		return
 	}
 
-	handler, ok := m.handlers[msg.ID]
+	handler, ok := m.handlers[req.ID]
 	if !ok {
-		runtime.LogErrorf(ctx, "MessageHandler: No handler for message: %s\n", msg.ID)
+		runtime.LogErrorf(ctx, "MessageHandler: No handler for message: %s\n", req.ID)
 		m.s.Close()
 		return
 	}
 
-	runtime.LogInfof(ctx, "MessageHandler: Handler for message (%s) found. Message handled.\n", msg.ID)
-	handler(&MessageRequest{
-		&msg,
-		m.s,
-	})
+	req.WriteCloser = m.s
+	req.Body = m.s
+	runtime.LogInfof(ctx, "MessageHandler: Handler for message (%s) found. Message handled.\n", req.ID)
+	handler(&req)
 
 	err = m.s.Close()
 	if err != nil {
 		runtime.LogErrorf(ctx, "MessageHandler: Error closing stream: %s\n", err)
 	}
 
-	runtime.LogInfof(ctx, "MessageHandler: Stream for message (%s) closed.\n", msg.ID)
+	runtime.LogInfof(ctx, "MessageHandler: Stream for message (%s) closed.\n", req.ID)
 }
 
 func (m *MessageHandler) HandleRequest(msgID RequestID, handler MessageRequestHandler) {
 	m.handlers[RequestID(msgID)] = handler
 }
 
-func messageToBytes(msg *Message) ([]byte, error) {
+func structToBytes[T any](req *T) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(msg)
+	err := enc.Encode(req)
 	return buf.Bytes(), err
 }
 
-func messageBToMessage(r io.Reader, msg *Message) error {
+func bytesToStruct[T any](r io.Reader, res *T) error {
 	dec := gob.NewDecoder(r)
-	err := dec.Decode(msg)
+	err := dec.Decode(res)
 	return err
 }
 
-type MessageRequest struct {
-	Message *Message
-	w       io.Writer
-}
-
-func (m *MessageRequest) Write(payload []byte) error {
-	res := Message{
-		ID:      m.Message.ID,
-		Payload: payload,
+func (m *Request) Write(body []byte) error {
+	res := Response{
+		ID: m.ID,
 	}
 
-	resb, err := messageToBytes(&res)
+	resb, err := structToBytes(&res)
 	if err != nil {
 		return err
 	}
 
-	m.w.Write(resb)
+	m.Write(resb)
+	m.Write(body)
 	return nil
 }

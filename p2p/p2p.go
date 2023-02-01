@@ -130,7 +130,7 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
-func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestID, payload []byte) (*Message, error) {
+func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestID, body []byte) (*Response, error) {
 	peerIDDecoded, err := peer.Decode(peerID)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error decoding peerID: %s\n", err.Error())
@@ -144,24 +144,24 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 		return nil, err
 	}
 
-	msg := Message{
-		ID:      requestID,
-		Payload: payload,
+	req := Request{
+		ID:   requestID,
+		Body: s,
 	}
-	msgb, err := messageToBytes(&msg)
+	reqb, err := structToBytes(&req)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error encoding message: %s\n", err.Error())
 		return nil, err
 	}
 
-	_, err = s.Write(msgb)
+	_, err = s.Write(reqb)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
 		return nil, err
 	}
 
-	var res Message
-	err = messageBToMessage(s, &res)
+	var res Response
+	err = bytesToStruct(s, &res)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error reading response: %s\n", err.Error())
 		return nil, err

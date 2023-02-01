@@ -63,6 +63,14 @@ func (a *App) ConnectToNode(addr string, id string) error {
 		return err
 	}
 
+	files, err := a.GetPeerSharedFiles(id)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Error getting peer shared files: %s\n", err.Error())
+		return err
+	}
+
+	runtime.LogInfof(a.ctx, "Peer shared files: %v\n", files)
+
 	return nil
 }
 
@@ -71,7 +79,7 @@ func (a *App) OnFrontendLoad() (*p2p.HostData, error) {
 }
 
 func (a *App) onMessage(mh *p2p.MessageHandler) {
-	mh.HandleRequest(p2p.GetFiles, func(req *p2p.MessageRequest) {
+	mh.HandleRequest(p2p.GetFiles, func(req *p2p.Request) {
 		homeDir, _ := os.UserHomeDir()
 		entries, _ := os.ReadDir(path.Join(homeDir, "Downloads"))
 		files := make([]string, 0, len(entries))
@@ -85,6 +93,7 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 		enc.Encode(files)
 
 		req.Write(buf.Bytes())
+		req.Close()
 	})
 }
 
@@ -95,7 +104,7 @@ func (a *App) GetPeerSharedFiles(peerID string) ([]string, error) {
 	}
 
 	var files []string
-	dec := gob.NewDecoder(bytes.NewReader(res.Payload))
+	dec := gob.NewDecoder(res.Body)
 	err = dec.Decode(&files)
 
 	if err != nil {
@@ -104,4 +113,9 @@ func (a *App) GetPeerSharedFiles(peerID string) ([]string, error) {
 
 	return files, nil
 
+}
+
+func (a *App) AddFiles() {
+	files, _ := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{})
+	runtime.LogDebugf(a.ctx, "Selected files: %v", files)
 }

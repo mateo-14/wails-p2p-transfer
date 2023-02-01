@@ -1,6 +1,13 @@
-import { signal } from '@preact/signals';
+import { create } from 'zustand';
 import { p2p } from '../../wailsjs/go/models';
 
-export type HostDataState = (p2p.HostData & { publicAddress: string }) | null;
+export type HostData = p2p.HostData & { publicAddress: string };
+export type HostDataState = {
+  hostData: HostData | null;
+  setHostData: (hostData: HostData) => void;
+};
 
-export const hostDataStore = signal<HostDataState | null>(null);
+export const useHostDataStore = create<HostDataState>((set, get) => ({
+  hostData: null,
+  setHostData: (hostData: HostData) => set({ hostData })
+}));
