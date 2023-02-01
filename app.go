@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -91,20 +92,20 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 			})
 		}
 
-		enc := gob.NewEncoder(req.WriteCloser)
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
 		enc.Encode(files)
+		_, err := req.Write(&buf)
 
-		err := req.Close()
 		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error closing request: %s", err.Error())
+			runtime.LogErrorf(a.ctx, "Error writing response: %s", err.Error())
 		}
 
+		req.Close()
 	})
 
 	mh.HandleRequest(ReqDownloadFile, func(req *p2p.Request) {
-		/* path, err := ioutil.ReadAll(req.Body)
-		defer req.Close()
-
+		path, err := io.ReadAll(req.Body)
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Error reading request body: %s", err.Error())
 			return
@@ -116,13 +117,11 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 			return
 		}
 
-		fileb, err := ioutil.ReadAll(file)
+		_, err = req.Write(file)
 		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error reading file: %s", err.Error())
+			runtime.LogErrorf(a.ctx, "Error streaming file: %s", err.Error())
 			return
-		} */
-
-		// req.Write(fileb)
+		}
 	})
 }
 
