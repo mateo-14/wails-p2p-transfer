@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -62,7 +61,6 @@ func (p *P2P) start(ctx context.Context, privk crypto.PrivKey) error {
 	host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4000"), libp2p.Identity(privk))
 
 	if p.Notifiee != nil {
-		fmt.Printf("%p\n", p.Notifiee)
 		host.Network().Notify(p.Notifiee)
 	}
 

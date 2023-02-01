@@ -70,20 +70,14 @@ func (m *MessageHandler) handle(ctx context.Context) {
 		return
 	}
 
+	runtime.LogInfof(ctx, "MessageHandler: Handler for message (%s) found. Message handled.\n", reqd.ID)
+
 	req := Request{
 		RequestData: reqd,
 	}
 	req.WriteCloser = m.s
 	req.Body = m.s
-	runtime.LogInfof(ctx, "MessageHandler: Handler for message (%s) found. Message handled.\n", req.ID)
 	handler(&req)
-
-	err = m.s.Close()
-	if err != nil {
-		runtime.LogErrorf(ctx, "MessageHandler: Error closing stream: %s\n", err)
-	}
-
-	runtime.LogInfof(ctx, "MessageHandler: Stream for message (%s) closed.\n", req.ID)
 }
 
 func (m *MessageHandler) HandleRequest(msgID RequestID, handler MessageRequestHandler) {
@@ -113,7 +107,7 @@ func (m *Request) Write(body []byte) error {
 		return err
 	}
 
-	m.Write(resb)
-	m.Write(body)
+	m.WriteCloser.Write(resb)
+	m.WriteCloser.Write(body)
 	return nil
 }
