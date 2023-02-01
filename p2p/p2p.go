@@ -143,21 +143,23 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 		return nil, err
 	}
 
-	defer s.CloseWrite()
-
 	reqd := RequestData{
 		ID: requestID,
 	}
 	err = structToBytes(&reqd, s)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error encoding and writing message: %s\n", err.Error())
+		s.Close()
 		return nil, err
 	}
+
+	defer s.CloseWrite()
 
 	if r != nil {
 		n, err := io.Copy(s, r)
 		if err != nil {
 			runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
+			s.CloseRead()
 			return nil, err
 		}
 		runtime.LogInfof(ctx, "SendMessage: Wrote %d bytes\n", n)
@@ -167,6 +169,7 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 	err = bytesToStruct(s, &resd)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error reading response: %s\n", err.Error())
+		s.CloseRead()
 		return nil, err
 	}
 

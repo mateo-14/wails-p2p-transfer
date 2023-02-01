@@ -127,9 +127,11 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 
 func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
 	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqGetFiles, nil)
+
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	var files []PeerFile
 	dec := gob.NewDecoder(res.Body)
@@ -155,12 +157,13 @@ type PeerFile struct {
 
 func (a *App) DownloadFile(peerID string, path string) {
 	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqDownloadFile, strings.NewReader(path))
-	fmt.Println(res)
 
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Error sending request: %s", err.Error())
 		return
 	}
+
+	defer res.Body.Close()
 
 	var buf bytes.Buffer
 	buf.ReadFrom(res.Body)
