@@ -16,13 +16,21 @@ const (
 	GetFiles RequestID = "get/files"
 )
 
+type ResponseData struct {
+	ID RequestID
+}
+
+type RequestData struct {
+	ID RequestID
+}
+
 type Response struct {
-	ID   RequestID
+	ResponseData
 	Body io.ReadCloser
 }
 
 type Request struct {
-	ID   RequestID
+	RequestData
 	Body io.ReadCloser
 	io.WriteCloser
 }
@@ -48,20 +56,23 @@ func NewMessageHandler(ctx context.Context, s network.Stream) *MessageHandler {
 }
 
 func (m *MessageHandler) handle(ctx context.Context) {
-	var req Request
-	err := bytesToStruct(m.s, &req)
+	var reqd RequestData
+	err := bytesToStruct(m.s, &reqd)
 	if err != nil {
 		runtime.LogErrorf(ctx, "MessageHandler: Error reading from stream: %s\n", err)
 		return
 	}
 
-	handler, ok := m.handlers[req.ID]
+	handler, ok := m.handlers[reqd.ID]
 	if !ok {
-		runtime.LogErrorf(ctx, "MessageHandler: No handler for message: %s\n", req.ID)
+		runtime.LogErrorf(ctx, "MessageHandler: No handler for message: %s\n", reqd.ID)
 		m.s.Close()
 		return
 	}
 
+	req := Request{
+		RequestData: reqd,
+	}
 	req.WriteCloser = m.s
 	req.Body = m.s
 	runtime.LogInfof(ctx, "MessageHandler: Handler for message (%s) found. Message handled.\n", req.ID)
@@ -93,7 +104,7 @@ func bytesToStruct[T any](r io.Reader, res *T) error {
 }
 
 func (m *Request) Write(body []byte) error {
-	res := Response{
+	res := ResponseData{
 		ID: m.ID,
 	}
 
