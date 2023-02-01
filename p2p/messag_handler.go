@@ -58,10 +58,12 @@ func (m *MessageHandler) handle(ctx context.Context) {
 		return
 	}
 
+	defer m.s.Close()
+
 	handler, ok := m.handlers[reqd.ID]
+
 	if !ok {
 		runtime.LogErrorf(ctx, "MessageHandler: No handler for message: %s\n", reqd.ID)
-		m.s.Close()
 		return
 	}
 

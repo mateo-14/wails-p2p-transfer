@@ -143,6 +143,8 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 		return nil, err
 	}
 
+	defer s.CloseWrite()
+
 	reqd := RequestData{
 		ID: requestID,
 	}
@@ -152,13 +154,14 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 		return nil, err
 	}
 
-	n, err := io.Copy(s, r)
-	if err != nil {
-		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
-		return nil, err
+	if r != nil {
+		n, err := io.Copy(s, r)
+		if err != nil {
+			runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
+			return nil, err
+		}
+		runtime.LogInfof(ctx, "SendMessage: Wrote %d bytes\n", n)
 	}
-
-	runtime.LogInfof(ctx, "SendMessage: Wrote %d bytes\n", n)
 
 	var resd ResponseData
 	err = bytesToStruct(s, &resd)
