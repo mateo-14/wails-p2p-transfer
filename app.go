@@ -63,14 +63,6 @@ func (a *App) ConnectToNode(addr string, id string) error {
 		return err
 	}
 
-	files, err := a.GetPeerSharedFiles(id)
-	if err != nil {
-		runtime.LogErrorf(a.ctx, "Error getting peer shared files: %s\n", err.Error())
-		return err
-	}
-
-	runtime.LogInfof(a.ctx, "Peer shared files: %v\n", files)
-
 	return nil
 }
 
@@ -82,10 +74,15 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 	mh.HandleRequest(p2p.GetFiles, func(req *p2p.Request) {
 		homeDir, _ := os.UserHomeDir()
 		entries, _ := os.ReadDir(path.Join(homeDir, "Downloads"))
-		files := make([]string, 0, len(entries))
+		files := make([]PeerFile, 0, len(entries))
 
 		for _, entry := range entries {
-			files = append(files, entry.Name())
+			filei, _ := entry.Info()
+			files = append(files, PeerFile{
+				Name: entry.Name(),
+				Size: filei.Size(),
+				Path: path.Join(homeDir, "Downloads", entry.Name()),
+			})
 		}
 
 		var buf bytes.Buffer
@@ -97,20 +94,20 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 	})
 }
 
-func (a *App) GetPeerSharedFiles(peerID string) ([]string, error) {
+func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
 	res, err := a.p2p.SendMessage(a.ctx, peerID, p2p.GetFiles, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var files []string
+	var files []PeerFile
 	dec := gob.NewDecoder(res.Body)
 	err = dec.Decode(&files)
 
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Printf("Files: %v\n", files)
 	return files, nil
 
 }
@@ -118,4 +115,10 @@ func (a *App) GetPeerSharedFiles(peerID string) ([]string, error) {
 func (a *App) AddFiles() {
 	files, _ := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{})
 	runtime.LogDebugf(a.ctx, "Selected files: %v", files)
+}
+
+type PeerFile struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+	Path string `json:"path"`
 }

@@ -1,57 +1,43 @@
 import classNames from 'classnames';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import { connectToPeer, getPeerFiles } from '../../services/p2pService';
 import { usePeersStore } from '../../stores/peers.store';
+import PeerFiles from './PeerFiles';
+import PeerInfo from "./PeerState";
 
 export default function Peer() {
   const { id } = useParams();
-  const getPeer = usePeersStore(state => state.getPeer);
+  const peer = usePeersStore(state => state.peers.find(peer => peer.id === id));
   const updatePeerState = usePeersStore(state => state.updatePeerState);
-  const peer = getPeer(id || '');
+  const [files, setFiles] = useState<string[]>([]);
 
-  if (!peer) {
-    return <div>a</div>;
+  if (!id || !peer) {
+    return <div>Not found</div>;
   }
 
   const handleConnect = () => {
     updatePeerState(peer.id, 'connecting');
-    connectToPeer(peer.address, peer.id)
-      .then(() => {
-        getPeerFiles(peer.id).then(data => {
-          console.log(data);
-        });
-      })
-      .catch(() => updatePeerState(peer.id, 'error'));
+    connectToPeer(peer.address, peer.id).catch(() => updatePeerState(peer.id, 'error'));
   };
+
+  useEffect(() => {
+    if (peer.state === 'connected') {
+      getPeerFiles(peer.id).then(data => {
+        setFiles(data);
+      });
+    }
+  }, [peer.state]);
 
   return (
     <div className="flex flex-col flex-1 min-w-0">
       <div className="flex items-center justify-between border-b-2 border-zinc-900/50 py-3 px-6 gap-x-6">
-        <div className="flex flex-col min-w-0">
-          <p className="text-xl font-semibold">
-            {peer.name ?? peer.address}
-            <span
-              className={classNames('ml-4 h-2 w-2 rounded-full inline-block', {
-                'animate-pulse': peer.state === 'connecting',
-                'bg-green-600': peer.state === 'connected',
-                'bg-cyan-500': peer.state === 'connecting',
-                'bg-zinc-500': peer.state === 'disconnected' || peer.state === 'error'
-              })}
-            ></span>
-          </p>
-          <p className="text-white/50 text-sm truncate" title={`${peer.address}/${peer.id}`}>
-            {peer.address}/{peer.id}
-          </p>
-        </div>
-        <div className="flex gap-x-3">
-          <Button>Block</Button>
-          <Button>Delete</Button>
-        </div>
+        <PeerInfo peer={peer} />
       </div>
-      <div className="py-2 px-6 flex-1">
+      <div className="py-2 pl-6 flex-1 min-h-0">
         {peer.state === 'connected' ? (
-          'connected'
+          <PeerFiles files={files} peerId={id} />
         ) : (
           <div className="flex items-center justify-center h-full text-3xl">
             {peer.state === 'connecting' ? <p className="animate-pulse">Connecting...</p> : null}

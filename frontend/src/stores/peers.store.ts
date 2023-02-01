@@ -10,7 +10,6 @@ export type Peer = {
 export type PeersState = {
   peers: Peer[];
   updatePeerState: (id: string, newState: Peer['state']) => void;
-  getPeer: (id: string) => Peer | undefined;
 };
 
 export const usePeersStore = create<PeersState>((set, get) => ({
@@ -28,7 +27,7 @@ export const usePeersStore = create<PeersState>((set, get) => ({
       state: 'error'
     }
   ],
-  
+
   updatePeerState: (id: string, newState: Peer['state']) =>
     set(state => ({
       peers: state.peers.map(peer => (peer.id === id ? { ...peer, state: newState } : peer))

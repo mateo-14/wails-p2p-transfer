@@ -21,11 +21,14 @@ export function App(props: any) {
   const updatePeerState = usePeersStore(state => state.updatePeerState);
 
   useEffect(() => {
+    const abortController = new AbortController();
     OnFrontendLoad()
       .then(data => {
-        fetch('https://api.ipify.org')
+        fetch('https://api.ipify.org', { signal: abortController.signal })
           .then(res => res.text())
           .then(ip => {
+            if (abortController.signal.aborted) return;
+            
             const publicAddress = data.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
 
             setHostData({
@@ -33,7 +36,6 @@ export function App(props: any) {
               address: `${data.address}/p2p`,
               publicAddress: `${publicAddress}/p2p`
             });
-
             onPeerConnected(id => {
               updatePeerState(id, 'connected');
             });
@@ -43,7 +45,9 @@ export function App(props: any) {
             });
 
             setIsLoading(false);
-          });
+          }).catch(() => {
+            
+          })
       })
       .catch((err: AppError) => {
         console.log(err);
@@ -53,6 +57,7 @@ export function App(props: any) {
       });
 
     return () => {
+      abortController.abort();
       unsubscribePeerConnected();
       unsubscribePeerDisconnected();
     };
