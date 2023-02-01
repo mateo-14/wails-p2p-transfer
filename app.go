@@ -6,11 +6,17 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 
 	"github.com/mateo-14/wails-p2p-transfer/p2p"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+const (
+	ReqGetFiles p2p.RequestID = iota
+	ReqDownloadFile
 )
 
 // Errors
@@ -71,7 +77,7 @@ func (a *App) OnFrontendLoad() (*p2p.HostData, error) {
 }
 
 func (a *App) onMessage(mh *p2p.MessageHandler) {
-	mh.HandleRequest(p2p.GetFiles, func(req *p2p.Request) {
+	mh.HandleRequest(ReqGetFiles, func(req *p2p.Request) {
 		homeDir, _ := os.UserHomeDir()
 		entries, _ := os.ReadDir(path.Join(homeDir, "Downloads"))
 		files := make([]PeerFile, 0, len(entries))
@@ -90,12 +96,40 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 		enc.Encode(files)
 
 		req.Write(buf.Bytes())
-		req.Close()
+		err := req.Close()
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error closing request: %s", err.Error())
+		}
+
+	})
+
+	mh.HandleRequest(ReqDownloadFile, func(req *p2p.Request) {
+		path, err := ioutil.ReadAll(req.Body)
+		defer req.Close()
+
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error reading request body: %s", err.Error())
+			return
+		}
+
+		file, err := os.Open(string(path))
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error opening file: %s", err.Error())
+			return
+		}
+
+		fileb, err := ioutil.ReadAll(file)
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error reading file: %s", err.Error())
+			return
+		}
+
+		req.Write(fileb)
 	})
 }
 
 func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
-	res, err := a.p2p.SendMessage(a.ctx, peerID, p2p.GetFiles, nil)
+	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqGetFiles, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -121,4 +155,17 @@ type PeerFile struct {
 	Name string `json:"name"`
 	Size int64  `json:"size"`
 	Path string `json:"path"`
+}
+
+func (a *App) DownloadFile(peerID string, path string) {
+	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqDownloadFile, []byte(path))
+
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Error sending request: %s", err.Error())
+		return
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(res.Body)
+	runtime.LogInfof(a.ctx, "Response: %s", buf.Bytes())
 }

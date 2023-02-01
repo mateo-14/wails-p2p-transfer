@@ -7,6 +7,8 @@ export function AddFiles():Promise<void>;
 
 export function ConnectToNode(arg1:string,arg2:string):Promise<void>;
 
+export function DownloadFile(arg1:string,arg2:string):Promise<void>;
+
 export function GetPeerSharedFiles(arg1:string):Promise<Array<main.PeerFile>>;
 
 export function OnFrontendLoad():Promise<p2p.HostData>;

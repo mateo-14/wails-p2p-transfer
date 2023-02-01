@@ -21,7 +21,7 @@ export default function PeerFiles({ files }: PeerFilesProps) {
         })}
       >
         {files.map(file => (
-          <button className="aspect-square rounded-md bg-zinc-900/50 flex items-end justify-center text-xs px-2 py-1 break-all text-center hover:bg-purple-600/30 select-none" onClick={() => handleClick(file)}>
+          <button className="aspect-square rounded-md bg-zinc-900/50 flex items-end justify-center text-xs px-2 py-1 break-all text-center hover:bg-purple-600/30 select-none" onClick={() => handleClick(file)} key={file.path}>
             {file.name}
           </button>
         ))}

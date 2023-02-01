@@ -10,11 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type RequestID string
-
-const (
-	GetFiles RequestID = "get/files"
-)
+type RequestID int64
 
 type ResponseData struct {
 	ID RequestID
