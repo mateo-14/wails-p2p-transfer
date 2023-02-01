@@ -6,9 +6,9 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/mateo-14/wails-p2p-transfer/p2p"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -91,11 +91,9 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 			})
 		}
 
-		var buf bytes.Buffer
-		enc := gob.NewEncoder(&buf)
+		enc := gob.NewEncoder(req.WriteCloser)
 		enc.Encode(files)
 
-		req.Write(buf.Bytes())
 		err := req.Close()
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Error closing request: %s", err.Error())
@@ -104,7 +102,7 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 	})
 
 	mh.HandleRequest(ReqDownloadFile, func(req *p2p.Request) {
-		path, err := ioutil.ReadAll(req.Body)
+		/* path, err := ioutil.ReadAll(req.Body)
 		defer req.Close()
 
 		if err != nil {
@@ -122,9 +120,9 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Error reading file: %s", err.Error())
 			return
-		}
+		} */
 
-		req.Write(fileb)
+		// req.Write(fileb)
 	})
 }
 
@@ -141,9 +139,8 @@ func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Files: %v\n", files)
-	return files, nil
 
+	return files, nil
 }
 
 func (a *App) AddFiles() {
@@ -158,7 +155,8 @@ type PeerFile struct {
 }
 
 func (a *App) DownloadFile(peerID string, path string) {
-	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqDownloadFile, []byte(path))
+	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqDownloadFile, strings.NewReader(path))
+	fmt.Println(res)
 
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Error sending request: %s", err.Error())

@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"io"
 	"os"
 
 	"github.com/libp2p/go-libp2p"
@@ -128,7 +129,7 @@ func (p *P2P) GetHostData() *HostData {
 	}
 }
 
-func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestID, body []byte) (*Response, error) {
+func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestID, r io.Reader) (*Response, error) {
 	peerIDDecoded, err := peer.Decode(peerID)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error decoding peerID: %s\n", err.Error())
@@ -145,23 +146,19 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 	reqd := RequestData{
 		ID: requestID,
 	}
-	reqb, err := structToBytes(&reqd)
+	err = structToBytes(&reqd, s)
 	if err != nil {
-		runtime.LogErrorf(ctx, "SendMessage: Error encoding message: %s\n", err.Error())
+		runtime.LogErrorf(ctx, "SendMessage: Error encoding and writing message: %s\n", err.Error())
 		return nil, err
 	}
 
-	_, err = s.Write(reqb)
+	n, err := io.Copy(s, r)
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
 		return nil, err
 	}
 
-	_, err = s.Write(body)
-	if err != nil {
-		runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
-		return nil, err
-	}
+	runtime.LogInfof(ctx, "SendMessage: Wrote %d bytes\n", n)
 
 	var resd ResponseData
 	err = bytesToStruct(s, &resd)

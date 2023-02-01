@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"bytes"
 	"context"
 	"encoding/gob"
 	"io"
@@ -80,11 +79,9 @@ func (m *MessageHandler) HandleRequest(msgID RequestID, handler MessageRequestHa
 	m.handlers[RequestID(msgID)] = handler
 }
 
-func structToBytes[T any](req *T) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(req)
-	return buf.Bytes(), err
+func structToBytes[T any](req *T, w io.Writer) error {
+	enc := gob.NewEncoder(w)
+	return enc.Encode(req)
 }
 
 func bytesToStruct[T any](r io.Reader, res *T) error {
@@ -93,17 +90,15 @@ func bytesToStruct[T any](r io.Reader, res *T) error {
 	return err
 }
 
-func (m *Request) Write(body []byte) error {
+func (m *Request) Write(r io.Reader) (int64, error) {
 	res := ResponseData{
 		ID: m.ID,
 	}
 
-	resb, err := structToBytes(&res)
+	err := structToBytes(&res, m.WriteCloser)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	m.WriteCloser.Write(resb)
-	m.WriteCloser.Write(body)
-	return nil
+	return io.Copy(m.WriteCloser, r)
 }
