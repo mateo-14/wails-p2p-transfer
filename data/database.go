@@ -32,15 +32,13 @@ func Init() *sql.DB {
 		fmt.Println(err)
 	}
 
-	res, err := db.Exec(`CREATE TABLE IF NOT EXISTS peers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT, peer_id TEXT, is_blocked INTEGER DEFAULT 0, UNIQUE(peer_id));
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS peers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT, peer_id TEXT, is_blocked INTEGER DEFAULT 0, UNIQUE(peer_id));
 	CREATE TABLE IF NOT EXISTS shared_files (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, size INTEGER, hash TEXT);
 	`)
 
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	fmt.Println(res)
 
 	return db
 }
@@ -81,7 +79,7 @@ func GetSharedFiles() ([]File, error) {
 		return nil, err
 	}
 
-	var files []File
+	files := make([]File, 0)
 	for rows.Next() {
 		var file File
 		err = rows.Scan(&file.ID, &file.Path, &file.Size, &file.Hash)

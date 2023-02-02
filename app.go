@@ -68,10 +68,10 @@ func (a *App) startP2P() (*p2p.HostData, error) {
 		return a.p2p.GetHostData(), nil
 	}
 
-	appn := &AppNotifiee{
+	p2p, err := p2p.NewP2P(a.ctx, a.onMessage)
+	p2p.Notify(&AppNotifiee{
 		ctx: a.ctx,
-	}
-	p2p, err := p2p.NewP2P(a.ctx, appn, a.onMessage)
+	})
 
 	if err != nil {
 		return nil, err
@@ -167,11 +167,13 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 }
 
 func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
+	fmt.Println("Getting peer files")
 	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqGetFiles, nil)
 
 	if err != nil {
 		return nil, err
 	}
+
 	defer res.Body.Close()
 
 	var files []PeerFile
@@ -179,6 +181,7 @@ func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
 	err = dec.Decode(&files)
 
 	if err != nil {
+		runtime.LogPrintf(a.ctx, "Error decoding response: %s", err.Error())
 		return nil, err
 	}
 

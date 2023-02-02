@@ -15,9 +15,8 @@ import (
 )
 
 type P2P struct {
-	host     host.Host
-	Notifiee network.Notifiee
-	msghcb   MessageHandlerCb
+	host   host.Host
+	msghcb MessageHandlerCb
 }
 
 type HostData struct {
@@ -29,7 +28,7 @@ type MessageHandlerCb func(*MessageHandler)
 
 const MessageProtocol = "/msg/1.0.0"
 
-func NewP2P(ctx context.Context, notifiee network.Notifiee, msghcb MessageHandlerCb) (*P2P, error) {
+func NewP2P(ctx context.Context, msghcb MessageHandlerCb) (*P2P, error) {
 	privk, err := loadPrivateKey()
 	if err != nil {
 		privk, err = generatePrivateKey()
@@ -44,9 +43,6 @@ func NewP2P(ctx context.Context, notifiee network.Notifiee, msghcb MessageHandle
 	}
 
 	p := &P2P{}
-	if notifiee != nil {
-		p.Notifiee = notifiee
-	}
 
 	p.msghcb = msghcb
 
@@ -61,10 +57,6 @@ func NewP2P(ctx context.Context, notifiee network.Notifiee, msghcb MessageHandle
 func (p *P2P) start(ctx context.Context, privk crypto.PrivKey) error {
 	host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4000"), libp2p.Identity(privk))
 
-	if p.Notifiee != nil {
-		host.Network().Notify(p.Notifiee)
-	}
-
 	p.host = host
 
 	host.SetStreamHandler(MessageProtocol, func(s network.Stream) {
@@ -72,7 +64,14 @@ func (p *P2P) start(ctx context.Context, privk crypto.PrivKey) error {
 		p.msghcb(msgh)
 	})
 
+	notifiee := NewNotifiee(ctx, p.host)
+	host.Network().Notify(notifiee)
+
 	return err
+}
+
+func (p *P2P) Notify(notifiee network.Notifiee) {
+	p.host.Network().Notify(notifiee)
 }
 
 func (p *P2P) RegenerateKey(ctx context.Context) error {
@@ -137,7 +136,6 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 	}
 
 	s, err := p.host.NewStream(ctx, peerIDDecoded, MessageProtocol)
-
 	if err != nil {
 		runtime.LogErrorf(ctx, "SendMessage: Error creating stream: %s\n", err.Error())
 		return nil, err
