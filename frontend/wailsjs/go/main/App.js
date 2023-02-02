@@ -10,10 +10,6 @@ export function ConnectToNode(arg1, arg2) {
   return window['go']['main']['App']['ConnectToNode'](arg1, arg2);
 }
 
-export function DownloadFile(arg1, arg2) {
-  return window['go']['main']['App']['DownloadFile'](arg1, arg2);
-}
-
 export function GetPeerSharedFiles(arg1) {
   return window['go']['main']['App']['GetPeerSharedFiles'](arg1);
 }

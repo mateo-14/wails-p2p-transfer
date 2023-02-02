@@ -153,16 +153,17 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 		return nil, err
 	}
 
-	defer s.CloseWrite()
-
 	if r != nil {
 		n, err := io.Copy(s, r)
+		s.CloseWrite()
 		if err != nil {
 			runtime.LogErrorf(ctx, "SendMessage: Error writing to stream:%s\n ", err.Error())
 			s.CloseRead()
 			return nil, err
 		}
 		runtime.LogInfof(ctx, "SendMessage: Wrote %d bytes\n", n)
+	} else {
+		s.CloseWrite()
 	}
 
 	var resd ResponseData

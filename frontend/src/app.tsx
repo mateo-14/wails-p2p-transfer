@@ -10,6 +10,7 @@ import {
   unsubscribePeerConnected,
   unsubscribePeerDisconnected
 } from './services/p2pService';
+import { useFilesStore } from "./stores/files.store";
 import { useHostDataStore } from './stores/hostData.store';
 import { usePeersStore } from './stores/peers.store';
 
@@ -18,6 +19,7 @@ const IP_REGEX = '/((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d).?\\b){4}/';
 export function App(props: any) {
   const [isLoading, setIsLoading] = useState(true);
   const setHostData = useHostDataStore(state => state.setHostData);
+  const addFiles = useFilesStore(state => state.addFiles);
   const updatePeerState = usePeersStore(state => state.updatePeerState);
 
   useEffect(() => {
@@ -27,15 +29,19 @@ export function App(props: any) {
         fetch('https://api.ipify.org', { signal: abortController.signal })
           .then(res => res.text())
           .then(ip => {
-            if (abortController.signal.aborted) return;
+            const { sharedFiles, hostData } = data;
+            if (abortController.signal.aborted || !hostData) return;
             
-            const publicAddress = data.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
+            addFiles(sharedFiles);
+
+            const publicAddress = hostData.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
 
             setHostData({
-              ...data,
-              address: `${data.address}/p2p`,
+              ...hostData,
+              address: `${hostData.address}/p2p`,
               publicAddress: `${publicAddress}/p2p`
             });
+
             onPeerConnected(id => {
               updatePeerState(id, 'connected');
             });
