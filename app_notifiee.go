@@ -26,8 +26,10 @@ func (n *AppNotifiee) ListenClose(_ network.Network, _ multiaddr.Multiaddr) {
 
 func (n *AppNotifiee) Connected(net network.Network, c network.Conn) {
 	runtime.EventsEmit(n.ctx, "peer:connected", c.RemotePeer())
+	runtime.LogInfof(n.ctx, "Connected to %s\n", c.RemotePeer())
 }
 
 func (n *AppNotifiee) Disconnected(net network.Network, c network.Conn) {
 	runtime.EventsEmit(n.ctx, "peer:disconnected", c.RemotePeer())
+	runtime.LogInfof(n.ctx, "Disconnected from %s\n", c.RemotePeer())
 }

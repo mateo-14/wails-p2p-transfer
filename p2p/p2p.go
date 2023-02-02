@@ -56,16 +56,12 @@ func NewP2P(ctx context.Context, msghcb MessageHandlerCb) (*P2P, error) {
 
 func (p *P2P) start(ctx context.Context, privk crypto.PrivKey) error {
 	host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4000"), libp2p.Identity(privk))
-
 	p.host = host
 
 	host.SetStreamHandler(MessageProtocol, func(s network.Stream) {
 		msgh := NewMessageHandler(ctx, s)
 		p.msghcb(msgh)
 	})
-
-	notifiee := NewNotifiee(ctx, p.host)
-	host.Network().Notify(notifiee)
 
 	return err
 }
@@ -121,8 +117,8 @@ func (p *P2P) Connect(ctx context.Context, addr string) error {
 	return nil
 }
 
-func (p *P2P) GetHostData() *HostData {
-	return &HostData{
+func (p *P2P) GetHostData() HostData {
+	return HostData{
 		Addr: p.Addrs()[0].String(),
 		Id:   p.Id(),
 	}

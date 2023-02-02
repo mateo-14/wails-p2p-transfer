@@ -41,9 +41,10 @@ type PeerFile struct {
 
 // App struct
 type App struct {
-	ctx context.Context
-	p2p *p2p.P2P
-	db  *sql.DB
+	ctx            context.Context
+	p2p            *p2p.P2P
+	db             *sql.DB
+	frontendLoaded bool
 }
 
 // NewApp creates a new App application struct
@@ -56,31 +57,21 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.db = data.Init()
+
+	p2p, err := p2p.NewP2P(a.ctx, a.onMessage)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Error starting P2P: %s\n", err.Error())
+		return
+	}
+
+	a.p2p = p2p
+	p2p.Notify(&AppNotifiee{
+		ctx: a.ctx,
+	})
 }
 
 func (a *App) shutdown(ctx context.Context) {
 	a.db.Close()
-}
-
-func (a *App) startP2P() (*p2p.HostData, error) {
-	if a.p2p != nil {
-		runtime.LogInfo(a.ctx, "P2P already started")
-		return a.p2p.GetHostData(), nil
-	}
-
-	p2p, err := p2p.NewP2P(a.ctx, a.onMessage)
-	p2p.Notify(&AppNotifiee{
-		ctx: a.ctx,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	a.p2p = p2p
-
-	return a.p2p.GetHostData(), nil
-
 }
 
 func (a *App) ConnectToNode(addr string, id string) error {
@@ -96,13 +87,7 @@ func (a *App) ConnectToNode(addr string, id string) error {
 }
 
 func (a *App) OnFrontendLoad() (*InitialData, error) {
-	hostd, err := a.startP2P()
-
-	if err != nil {
-		runtime.LogErrorf(a.ctx, "Error starting P2P: %s\n", err.Error())
-		return nil, err
-	}
-
+	a.frontendLoaded = true
 	sharedFiles, err := data.GetSharedFiles()
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Error getting shared files: %s\n", err.Error())
@@ -110,8 +95,11 @@ func (a *App) OnFrontendLoad() (*InitialData, error) {
 	}
 
 	initialData := &InitialData{
-		HostData:    *hostd,
 		SharedFiles: sharedFiles,
+	}
+
+	if a.p2p != nil {
+		initialData.HostData = a.p2p.GetHostData()
 	}
 
 	return initialData, nil
