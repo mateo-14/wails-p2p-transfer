@@ -25,7 +25,7 @@ export default function Peer() {
   useEffect(() => {
     if (peer.state === 'connected') {
       getPeerFiles(peer.id).then(data => {
-        setFiles(data);
+        if (data) setFiles(data);
       });
     }
   }, [peer.state]);

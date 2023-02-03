@@ -1,4 +1,5 @@
 import { ConnectToNode, GetPeerSharedFiles } from '../../wailsjs/go/main/App';
+import { data } from "../../wailsjs/go/models";
 import { EventsOn, EventsOff } from '../../wailsjs/runtime';
 
 const PeerDisconnectedEvent = 'peer:disconnected';
@@ -27,6 +28,6 @@ export function unsubscribePeerDisconnected() {
   EventsOff(PeerDisconnectedEvent);
 }
 
-export function getPeerFiles(id: string) {
+export function getPeerFiles(id: string) : Promise<data.PeerFile[] | null>{
   return GetPeerSharedFiles(id);
 }
