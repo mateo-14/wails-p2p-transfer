@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import { useState } from "react";
 import { data } from "../../../wailsjs/go/models";
+import { DownloadFile } from '../../../wailsjs/go/main/App';
 
 type PeerFilesProps = {
   files: data.PeerFile[];
@@ -11,7 +12,7 @@ export default function PeerFiles({ files, peerId }: PeerFilesProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   const handleClick = (file: data.PeerFile) => {
-    // DownloadFile(peerId, file.path)
+    DownloadFile(peerId, file.id)
   }
   return (
     <div className="h-full grid grid-cols-[1fr_300px]">
