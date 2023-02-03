@@ -4,6 +4,8 @@ import {data} from '../models';
 
 export function AddFiles():Promise<string>;
 
+export function AddPeer(arg1:string,arg2:string):Promise<data.Peer>;
+
 export function ConnectToNode(arg1:string,arg2:string):Promise<void>;
 
 export function DownloadFile(arg1:string,arg2:number):Promise<void>;

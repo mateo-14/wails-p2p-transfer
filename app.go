@@ -8,10 +8,12 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jaevor/go-nanoid"
 	"github.com/mateo-14/wails-p2p-transfer/data"
@@ -79,8 +81,15 @@ func (a *App) OnFrontendLoad() (*data.InitialData, error) {
 		return nil, err
 	}
 
+	peers, err := data.GetPeers()
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Error getting peers: %s\n", err.Error())
+		return nil, err
+	}
+
 	initialData := &data.InitialData{
 		SharedFiles: sharedFiles,
+		Peers:       peers,
 	}
 
 	if a.p2p != nil {
@@ -127,7 +136,7 @@ func (a *App) AddFiles() (string, error) {
 	go func() {
 		filesd := make([]data.File, 0, len(files))
 		for _, path := range files {
-			filei, err := os.Stat(path)
+			_, err := os.Stat(path)
 			if err != nil {
 				runtime.LogErrorf(a.ctx, "Error getting file info: %s", err.Error())
 				continue
@@ -140,7 +149,7 @@ func (a *App) AddFiles() (string, error) {
 				continue
 			}
 
-			_, err = io.Copy(hash, file)
+			n, err := io.Copy(hash, file)
 			if err != nil {
 				runtime.LogErrorf(a.ctx, "Error hashing file: %s", err.Error())
 				continue
@@ -151,10 +160,10 @@ func (a *App) AddFiles() (string, error) {
 			var filed data.File
 			filed.Hash = hashs
 			filed.Name = filepath.Base(path)
-			filed.Size = filei.Size()
+			filed.Size = n
 			filed.Path = path
 
-			id, err := data.AddSharedFile(path, filei.Size(), hashs)
+			id, err := data.AddSharedFile(path, filed.Size, hashs)
 			if err == nil {
 				filed.ID = id
 				filesd = append(filesd, filed)
@@ -177,7 +186,7 @@ func (a *App) RemoveSharedFile(id int64) error {
 	return nil
 }
 
-func (a *App) DownloadFile(peerID string, id uint64) {
+func (a *App) DownloadFile(peerID string, id uint64) error {
 	fmt.Println("Downloading file", id, "from", peerID)
 	idb := make([]byte, 8)
 	binary.LittleEndian.PutUint64(idb, id)
@@ -185,7 +194,7 @@ func (a *App) DownloadFile(peerID string, id uint64) {
 
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Error sending request: %s", err.Error())
-		return
+		return err
 	}
 
 	filei := &data.PeerFile{}
@@ -194,11 +203,51 @@ func (a *App) DownloadFile(peerID string, id uint64) {
 
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Error decoding response: %s", err.Error())
-		return
+		return err
 	}
-	fmt.Println(filei)
 
 	defer res.Body.Close()
-	fileb, err := io.ReadAll(res.Body)
-	fmt.Println(len(fileb))
+
+	os.Mkdir("downloads", os.ModePerm)
+
+	path := filepath.Join("downloads", filei.Name)
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		f, err := os.Create(path)
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error creating file: %s", err.Error())
+			return err
+		}
+
+		defer f.Close()
+
+		_, err = io.CopyN(f, res.Body, filei.Size)
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error writing file: %s", err.Error())
+			return err
+		}
+	} else {
+		runtime.LogErrorf(a.ctx, "File already exists: %s", path)
+		return errors.New("file already exists")
+	}
+
+	return nil
+}
+
+func (a *App) AddPeer(name string, addr string) (*data.Peer, error) {
+	lastslashi := strings.LastIndex(addr, "/") + 1
+	id := addr[lastslashi:]
+	addr = addr[:lastslashi-1]
+
+	idi, err := data.AddPeer(name, addr, id)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Error adding peer: %s", err.Error())
+		return nil, err
+	}
+
+	return &data.Peer{
+		ID:      idi,
+		Name:    name,
+		Address: addr,
+		PeerID:  id,
+	}, nil
 }

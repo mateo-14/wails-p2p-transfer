@@ -17,6 +17,7 @@ type File struct {
 type InitialData struct {
 	HostData    p2p.HostData `json:"hostData"`
 	SharedFiles []File       `json:"sharedFiles"`
+	Peers       []Peer       `json:"peers"`
 }
 
 type PeerFile struct {

@@ -44,9 +44,10 @@ func GetPeers() ([]Peer, error) {
 	}
 
 	var peers []Peer
+	var isBlocked bool
 	for rows.Next() {
 		var peer Peer
-		err = rows.Scan(&peer.ID, &peer.Name, &peer.Address, &peer.PeerID)
+		err = rows.Scan(&peer.ID, &peer.Name, &peer.Address, &peer.PeerID, &isBlocked)
 		if err != nil {
 			fmt.Println(err)
 		} else {

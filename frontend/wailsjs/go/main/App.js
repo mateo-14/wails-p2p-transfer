@@ -6,6 +6,10 @@ export function AddFiles() {
   return window['go']['main']['App']['AddFiles']();
 }
 
+export function AddPeer(arg1, arg2) {
+  return window['go']['main']['App']['AddPeer'](arg1, arg2);
+}
+
 export function ConnectToNode(arg1, arg2) {
   return window['go']['main']['App']['ConnectToNode'](arg1, arg2);
 }

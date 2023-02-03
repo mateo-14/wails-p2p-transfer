@@ -1,11 +1,11 @@
 export namespace data {
 	
 	export class File {
-	    id: number;
 	    path: string;
-	    size: number;
-	    hash: string;
 	    name: string;
+	    size: number;
+	    id: number;
+	    hash: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new File(source);
@@ -13,16 +13,35 @@ export namespace data {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
 	        this.path = source["path"];
-	        this.size = source["size"];
-	        this.hash = source["hash"];
 	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.id = source["id"];
+	        this.hash = source["hash"];
+	    }
+	}
+	export class Peer {
+	    id: number;
+	    name: string;
+	    address: string;
+	    peerID: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Peer(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.address = source["address"];
+	        this.peerID = source["peerID"];
 	    }
 	}
 	export class InitialData {
 	    hostData: p2p.HostData;
 	    sharedFiles: File[];
+	    peers: Peer[];
 	
 	    static createFrom(source: any = {}) {
 	        return new InitialData(source);
@@ -32,6 +51,7 @@ export namespace data {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.hostData = this.convertValues(source["hostData"], p2p.HostData);
 	        this.sharedFiles = this.convertValues(source["sharedFiles"], File);
+	        this.peers = this.convertValues(source["peers"], Peer);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -52,10 +72,12 @@ export namespace data {
 		    return a;
 		}
 	}
+	
 	export class PeerFile {
 	    name: string;
 	    size: number;
 	    id: number;
+	    hash: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PeerFile(source);
@@ -66,6 +88,7 @@ export namespace data {
 	        this.name = source["name"];
 	        this.size = source["size"];
 	        this.id = source["id"];
+	        this.hash = source["hash"];
 	    }
 	}
 

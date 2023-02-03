@@ -10,7 +10,7 @@ import {
   unsubscribePeerConnected,
   unsubscribePeerDisconnected
 } from './services/p2pService';
-import { useFilesStore } from "./stores/files.store";
+import { useFilesStore } from './stores/files.store';
 import { useHostDataStore } from './stores/hostData.store';
 import { usePeersStore } from './stores/peers.store';
 
@@ -21,6 +21,7 @@ export function App(props: any) {
   const setHostData = useHostDataStore(state => state.setHostData);
   const setFiles = useFilesStore(state => state.setFiles);
   const updatePeerState = usePeersStore(state => state.updatePeerState);
+  const setPeers = usePeersStore(state => state.setPeers);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -29,8 +30,16 @@ export function App(props: any) {
         fetch('https://api.ipify.org', { signal: abortController.signal })
           .then(res => res.text())
           .then(ip => {
-            const { sharedFiles, hostData } = data;
+            const { sharedFiles, hostData, peers } = data;
             if (abortController.signal.aborted || !hostData) return;
+            setPeers(
+              peers.map(peer => ({
+                state: 'disconnected',
+                id: peer.peerID,
+                address: peer.address,
+                name: peer.name
+              }))
+            );
             setFiles(sharedFiles);
 
             const publicAddress = hostData.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
@@ -50,9 +59,8 @@ export function App(props: any) {
             });
 
             setIsLoading(false);
-          }).catch(() => {
-            
           })
+          .catch(() => {});
       })
       .catch((err: AppError) => {
         console.log(err);

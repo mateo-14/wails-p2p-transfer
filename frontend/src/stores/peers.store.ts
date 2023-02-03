@@ -10,28 +10,21 @@ export type Peer = {
 export type PeersState = {
   peers: Peer[];
   updatePeerState: (id: string, newState: Peer['state']) => void;
+  setPeers: (peers: Peer[]) => void;
+  addPeer: (peer: Peer) => void;
 };
 
 export const usePeersStore = create<PeersState>((set, get) => ({
-  peers: [
-    {
-      id: 'QmWXNcTtpYnHKSVEcUPRCvMs3yx7caqGqBZrEB9hRghj6z',
-      address: '/ip4/192.168.0.176/tcp/4000/p2p',
-      name: 'Desktop',
-      state: 'disconnected'
-    },
-    {
-      id: 'QmdberyhsY3DGE2pVjY1Etw7q3xiToHLb1BvXFvHySdACD',
-      address: '/ip4/192.168.0.247/tcp/4000/p2p',
-      name: 'Laptop',
-      state: 'error'
-    }
-  ],
+  peers: [],
 
   updatePeerState: (id: string, newState: Peer['state']) =>
     set(state => ({
       peers: state.peers.map(peer => (peer.id === id ? { ...peer, state: newState } : peer))
     })),
 
-  getPeer: (id: string) => get().peers.find(peer => peer.id === id)
+  getPeer: (id: string) => get().peers.find(peer => peer.id === id),
+
+  setPeers: (peers: Peer[]) => set({ peers }),
+  
+  addPeer: (peer: Peer) => set(state => ({ peers: [...state.peers, peer] }))
 }));
