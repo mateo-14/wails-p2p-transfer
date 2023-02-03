@@ -11,17 +11,13 @@ import (
 
 type RequestID int64
 
-type ResponseData struct {
-	ID RequestID
-}
-
 type RequestData struct {
 	ID RequestID
 }
 
 type Response struct {
-	ResponseData
-	Body io.ReadCloser
+	RequestData RequestData
+	Body        io.ReadCloser
 }
 
 type Request struct {
@@ -99,14 +95,5 @@ func bytesToStruct[T any](r io.Reader, res *T) error {
 }
 
 func (m *Request) Write(r io.Reader) (int64, error) {
-	res := ResponseData{
-		ID: m.ID,
-	}
-
-	err := structToBytes(&res, m.WriteCloser)
-	if err != nil {
-		return 0, err
-	}
-
 	return io.Copy(m.WriteCloser, r)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
+	"fmt"
 	"os"
 
 	"github.com/mateo-14/wails-p2p-transfer/data"
@@ -60,6 +61,13 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 			Name: file.Name,
 			Size: file.Size,
 			ID:   file.ID,
+			Hash: file.Hash,
+		}
+
+		f, err := os.Open(file.Path)
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error opening file: %s", err.Error())
+			return
 		}
 
 		// Send file info
@@ -73,16 +81,12 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 			return
 		}
 
-		f, err := os.Open(file.Path)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error opening file: %s", err.Error())
-			return
-		}
-
+		// req.Write(bytes.NewBufferString("-=#-=#-=#-=#-=#-=#-=#-=#"))
 		// Send file
-		_, err = req.Write(f)
+		w, err := req.Write(f)
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Error writing file response: %s", err.Error())
 		}
+		fmt.Println(w, file.Size)
 	})
 }

@@ -160,17 +160,9 @@ func (p *P2P) SendMessage(ctx context.Context, peerID string, requestID RequestI
 		s.CloseWrite()
 	}
 
-	var resd ResponseData
-	err = bytesToStruct(s, &resd)
-	if err != nil {
-		runtime.LogErrorf(ctx, "SendMessage: Error reading response: %s\n", err.Error())
-		s.CloseRead()
-		return nil, err
-	}
-
 	res := Response{
-		ResponseData: resd,
-		Body:         s,
+		RequestData: reqd,
+		Body:        s,
 	}
 	return &res, nil
 }
