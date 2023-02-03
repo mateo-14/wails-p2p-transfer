@@ -42,13 +42,13 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 
 	mh.HandleRequest(p2p.ReqDownloadFile, func(req *p2p.Request) {
 		defer req.Close()
-		idb := make([]byte, 8)
-		_, err := req.Body.Read(idb)
+		var id uint64
+		err := binary.Read(req.Body, binary.LittleEndian, &id)
+
 		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error reading request body: %s", err.Error())
+			runtime.LogErrorf(a.ctx, "Error decoding file id: %s", err.Error())
 			return
 		}
-		id := binary.BigEndian.Uint64(idb)
 
 		file, err := data.GetSharedFile(int64(id))
 		if err != nil {
