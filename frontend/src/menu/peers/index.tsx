@@ -51,7 +51,10 @@ export default function Peers() {
         </ul>
         <Button
           className="mx-2 mb-4"
-          onClick={() => alert(`Share this address: ${hostData?.publicAddress}/${hostData?.id}`)}
+          onClick={() => {
+            alert(`Share this address: ${hostData?.publicAddress}/${hostData?.id}`)
+            console.log(`${hostData?.publicAddress}/${hostData?.id}`)
+          }}
         >
           Share
         </Button>
