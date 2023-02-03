@@ -178,6 +178,7 @@ func (a *App) RemoveSharedFile(id int64) error {
 }
 
 func (a *App) DownloadFile(peerID string, id uint64) {
+	fmt.Println("Downloading file", id, "from", peerID)
 	idb := make([]byte, 8)
 	binary.LittleEndian.PutUint64(idb, id)
 	res, err := a.p2p.SendMessage(a.ctx, peerID, p2p.ReqDownloadFile, bytes.NewReader(idb))
@@ -187,5 +188,17 @@ func (a *App) DownloadFile(peerID string, id uint64) {
 		return
 	}
 
+	filei := &data.PeerFile{}
+	dec := gob.NewDecoder(res.Body)
+	err = dec.Decode(&filei)
+
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Error decoding response: %s", err.Error())
+		return
+	}
+	fmt.Println(filei)
+
 	defer res.Body.Close()
+	fileb, err := io.ReadAll(res.Body)
+	fmt.Println(len(fileb))
 }

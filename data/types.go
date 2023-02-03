@@ -10,11 +10,8 @@ type Peer struct {
 }
 
 type File struct {
-	ID   int64  `json:"id"`
 	Path string `json:"path"`
-	Size int64  `json:"size"`
-	Hash string `json:"hash"`
-	Name string `json:"name"`
+	PeerFile
 }
 
 type InitialData struct {
@@ -26,4 +23,5 @@ type PeerFile struct {
 	Name string `json:"name"`
 	Size int64  `json:"size"`
 	ID   int64  `json:"id"`
+	Hash string `json:"hash"`
 }

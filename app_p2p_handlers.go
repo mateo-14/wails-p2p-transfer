@@ -56,15 +56,33 @@ func (a *App) onMessage(mh *p2p.MessageHandler) {
 			return
 		}
 
+		peerf := data.PeerFile{
+			Name: file.Name,
+			Size: file.Size,
+			ID:   file.ID,
+		}
+
+		// Send file info
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		enc.Encode(peerf)
+
+		_, err = req.Write(&buf)
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Error writing file info response: %s", err.Error())
+			return
+		}
+
 		f, err := os.Open(file.Path)
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Error opening file: %s", err.Error())
 			return
 		}
 
+		// Send file
 		_, err = req.Write(f)
 		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error writing response: %s", err.Error())
+			runtime.LogErrorf(a.ctx, "Error writing file response: %s", err.Error())
 		}
 	})
 }
