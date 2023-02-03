@@ -32,14 +32,16 @@ export function App(props: any) {
           .then(ip => {
             const { sharedFiles, hostData, peers } = data;
             if (abortController.signal.aborted || !hostData) return;
-            setPeers(
-              peers.map(peer => ({
-                state: 'disconnected',
-                id: peer.peerID,
-                address: peer.address,
-                name: peer.name
-              }))
-            );
+            if (peers)
+              setPeers(
+                peers.map(peer => ({
+                  state: 'disconnected',
+                  id: peer.peerID,
+                  address: peer.address,
+                  name: peer.name
+                }))
+              );
+              
             setFiles(sharedFiles);
 
             const publicAddress = hostData.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
