@@ -19,7 +19,7 @@ const IP_REGEX = '/((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d).?\\b){4}/';
 export function App(props: any) {
   const [isLoading, setIsLoading] = useState(true);
   const setHostData = useHostDataStore(state => state.setHostData);
-  const addFiles = useFilesStore(state => state.addFiles);
+  const setFiles = useFilesStore(state => state.setFiles);
   const updatePeerState = usePeersStore(state => state.updatePeerState);
 
   useEffect(() => {
@@ -31,8 +31,7 @@ export function App(props: any) {
           .then(ip => {
             const { sharedFiles, hostData } = data;
             if (abortController.signal.aborted || !hostData) return;
-            
-            addFiles(sharedFiles);
+            setFiles(sharedFiles);
 
             const publicAddress = hostData.address.replace(new RegExp(IP_REGEX), `/${ip}/`);
 
@@ -78,7 +77,7 @@ export function App(props: any) {
   }
 
   return (
-    <div className="h-screen flex bg-zinc-800">
+    <div className="h-screen flex bg-zinc-800 select-none">
       {/* Menu */}
       <div className="w-16 bg-zinc-900/70 h-full flex flex-col items-center pt-4 gap-y-2">
         <MenuItem to="/peers">

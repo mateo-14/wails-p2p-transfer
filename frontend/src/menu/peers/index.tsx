@@ -10,7 +10,7 @@ export default function Peers() {
 
   return (
     <div className="flex h-full">
-      <div className="w-60 flex flex-col select-none bg-zinc-900/25 flex-shrink-0">
+      <div className="w-60 flex flex-col bg-zinc-900/25 flex-shrink-0">
         <div className="py-4 px-4 flex justify-between">
           <p className="text-2xl lett">Peers</p>
           <button className="font-medium hover:bg-zinc-700">+ add</button>

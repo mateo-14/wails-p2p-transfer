@@ -5,39 +5,19 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/jaevor/go-nanoid"
 	"github.com/mateo-14/wails-p2p-transfer/data"
 	"github.com/mateo-14/wails-p2p-transfer/p2p"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
-// Enums
-const (
-	ReqGetFiles p2p.RequestID = iota
-	ReqDownloadFile
-)
-
-// Errors
-var ErrP2PAlreadyStarted = errors.New("P2P already started")
-
-// Types
-type InitialData struct {
-	HostData    p2p.HostData `json:"hostData"`
-	SharedFiles []data.File  `json:"sharedFiles"`
-}
-
-type PeerFile struct {
-	Name string `json:"name"`
-	Size int64  `json:"size"`
-	ID   int    `json:"id"`
-}
 
 // App struct
 type App struct {
@@ -51,6 +31,8 @@ type App struct {
 func NewApp() *App {
 	return &App{}
 }
+
+var idgen func() string
 
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
@@ -68,12 +50,15 @@ func (a *App) startup(ctx context.Context) {
 	p2p.Notify(&AppNotifiee{
 		ctx: a.ctx,
 	})
+
+	idgen, _ = nanoid.Standard(6)
 }
 
 func (a *App) shutdown(ctx context.Context) {
 	a.db.Close()
 }
 
+// Frontend methods
 func (a *App) ConnectToNode(addr string, id string) error {
 	nodeaddr := fmt.Sprintf("%s/%s", addr, id)
 
@@ -86,7 +71,7 @@ func (a *App) ConnectToNode(addr string, id string) error {
 	return nil
 }
 
-func (a *App) OnFrontendLoad() (*InitialData, error) {
+func (a *App) OnFrontendLoad() (*data.InitialData, error) {
 	a.frontendLoaded = true
 	sharedFiles, err := data.GetSharedFiles()
 	if err != nil {
@@ -94,7 +79,7 @@ func (a *App) OnFrontendLoad() (*InitialData, error) {
 		return nil, err
 	}
 
-	initialData := &InitialData{
+	initialData := &data.InitialData{
 		SharedFiles: sharedFiles,
 	}
 
@@ -105,58 +90,8 @@ func (a *App) OnFrontendLoad() (*InitialData, error) {
 	return initialData, nil
 }
 
-func (a *App) onMessage(mh *p2p.MessageHandler) {
-	mh.HandleRequest(ReqGetFiles, func(req *p2p.Request) {
-		sfiles, err := data.GetSharedFiles()
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error getting shared files: %s", err.Error())
-		}
-
-		files := make([]PeerFile, 0, len(sfiles))
-		for _, f := range sfiles {
-			files = append(files, PeerFile{
-				Name: f.Name,
-				Size: f.Size,
-				ID:   f.ID,
-			})
-		}
-
-		var buf bytes.Buffer
-		enc := gob.NewEncoder(&buf)
-		enc.Encode(files)
-		_, err = req.Write(&buf)
-
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error writing response: %s", err.Error())
-		}
-
-		req.Close()
-	})
-
-	mh.HandleRequest(ReqDownloadFile, func(req *p2p.Request) {
-		path, err := io.ReadAll(req.Body)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error reading request body: %s", err.Error())
-			return
-		}
-
-		file, err := os.Open(string(path))
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error opening file: %s", err.Error())
-			return
-		}
-
-		_, err = req.Write(file)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error streaming file: %s", err.Error())
-			return
-		}
-	})
-}
-
-func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
-	fmt.Println("Getting peer files")
-	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqGetFiles, nil)
+func (a *App) GetPeerSharedFiles(peerID string) ([]data.PeerFile, error) {
+	res, err := a.p2p.SendMessage(a.ctx, peerID, p2p.ReqGetFiles, nil)
 
 	if err != nil {
 		return nil, err
@@ -164,7 +99,7 @@ func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
 
 	defer res.Body.Close()
 
-	var files []PeerFile
+	var files []data.PeerFile
 	dec := gob.NewDecoder(res.Body)
 	err = dec.Decode(&files)
 
@@ -176,52 +111,76 @@ func (a *App) GetPeerSharedFiles(peerID string) ([]PeerFile, error) {
 	return files, nil
 }
 
-func (a *App) AddFiles() ([]data.File, error) {
+func (a *App) AddFiles() (string, error) {
 	files, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{})
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Error opening file dialog: %s", err.Error())
-		return nil, err
+		return "", err
 	}
 
-	runtime.LogDebugf(a.ctx, "Selected files: %v", files)
-	filesd := make([]data.File, 0, len(files))
-	for _, path := range files {
-		filei, err := os.Stat(path)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error getting file info: %s", err.Error())
-			continue
-		}
-
-		hash := sha256.New()
-		file, err := os.Open(path)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error opening file: %s", err.Error())
-			continue
-		}
-
-		_, err = io.Copy(hash, file)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Error hashing file: %s", err.Error())
-			continue
-		}
-
-		hashs := hex.EncodeToString(hash.Sum(nil))
-
-		var filed data.File
-		filed.Hash = hashs
-		filed.Name = filepath.Base(path)
-		filed.Size = filei.Size()
-		filed.Path = path
-
-		data.AddSharedFile(path, filei.Size(), hashs)
-		filesd = append(filesd, filed)
+	if (len(files)) == 0 {
+		return "", nil
 	}
 
-	return filesd, nil
+	eventid := idgen()
+
+	go func() {
+		filesd := make([]data.File, 0, len(files))
+		for _, path := range files {
+			filei, err := os.Stat(path)
+			if err != nil {
+				runtime.LogErrorf(a.ctx, "Error getting file info: %s", err.Error())
+				continue
+			}
+
+			hash := sha256.New()
+			file, err := os.Open(path)
+			if err != nil {
+				runtime.LogErrorf(a.ctx, "Error opening file: %s", err.Error())
+				continue
+			}
+
+			_, err = io.Copy(hash, file)
+			if err != nil {
+				runtime.LogErrorf(a.ctx, "Error hashing file: %s", err.Error())
+				continue
+			}
+
+			hashs := hex.EncodeToString(hash.Sum(nil))
+
+			var filed data.File
+			filed.Hash = hashs
+			filed.Name = filepath.Base(path)
+			filed.Size = filei.Size()
+			filed.Path = path
+
+			id, err := data.AddSharedFile(path, filei.Size(), hashs)
+			if err == nil {
+				filed.ID = id
+				filesd = append(filesd, filed)
+			}
+		}
+
+		runtime.EventsEmit(a.ctx, eventid, filesd)
+	}()
+
+	return eventid, nil
 }
 
-/* func (a *App) DownloadFile(peerID string, id int) {
-	res, err := a.p2p.SendMessage(a.ctx, peerID, ReqDownloadFile, strings.NewReader(path))
+func (a *App) RemoveSharedFile(id int64) error {
+	err := data.RemoveSharedFile(id)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Error removing shared file: %s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (a *App) DownloadFile(peerID string, id uint64) {
+	idb := make([]byte, 8)
+	binary.LittleEndian.PutUint64(idb, id)
+	res, err := a.p2p.SendMessage(a.ctx, peerID, p2p.ReqDownloadFile, bytes.NewReader(idb))
 
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Error sending request: %s", err.Error())
@@ -229,9 +188,4 @@ func (a *App) AddFiles() ([]data.File, error) {
 	}
 
 	defer res.Body.Close()
-
-	fname := filepath.Base(path)
-	file, err := os.Create(fname)
-	io.Copy(file, res.Body)
-	file.Close()
-} */
+}

@@ -1,4 +1,3 @@
-import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../../components/Button';
@@ -6,13 +5,13 @@ import { connectToPeer, getPeerFiles } from '../../services/p2pService';
 import { usePeersStore } from '../../stores/peers.store';
 import PeerFiles from './PeerFiles';
 import PeerInfo from "./PeerState";
-import { main } from '../../../wailsjs/go/models';
+import { data } from '../../../wailsjs/go/models';
 
 export default function Peer() {
   const { id } = useParams();
   const peer = usePeersStore(state => state.peers.find(peer => peer.id === id));
   const updatePeerState = usePeersStore(state => state.updatePeerState);
-  const [files, setFiles] = useState<main.PeerFile[]>([]);
+  const [files, setFiles] = useState<data.PeerFile[]>([]);
 
   if (!id || !peer) {
     return <div>Not found</div>;

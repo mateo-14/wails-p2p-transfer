@@ -20,14 +20,9 @@ export namespace data {
 	        this.name = source["name"];
 	    }
 	}
-
-}
-
-export namespace main {
-	
 	export class InitialData {
 	    hostData: p2p.HostData;
-	    sharedFiles: data.File[];
+	    sharedFiles: File[];
 	
 	    static createFrom(source: any = {}) {
 	        return new InitialData(source);
@@ -36,7 +31,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.hostData = this.convertValues(source["hostData"], p2p.HostData);
-	        this.sharedFiles = this.convertValues(source["sharedFiles"], data.File);
+	        this.sharedFiles = this.convertValues(source["sharedFiles"], File);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -8,21 +8,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type Peer struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	Address string `json:"address"`
-	PeerID  string `json:"peerID"`
-}
-
-type File struct {
-	ID   int    `json:"id"`
-	Path string `json:"path"`
-	Size int64  `json:"size"`
-	Hash string `json:"hash"`
-	Name string `json:"name"`
-}
-
 var db *sql.DB
 
 func Init() *sql.DB {
@@ -33,7 +18,7 @@ func Init() *sql.DB {
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS peers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT, peer_id TEXT, is_blocked INTEGER DEFAULT 0, UNIQUE(peer_id));
-	CREATE TABLE IF NOT EXISTS shared_files (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, size INTEGER, hash TEXT);
+	CREATE TABLE IF NOT EXISTS shared_files (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, size INTEGER, hash TEXT, UNIQUE(hash, path));
 	`)
 
 	if err != nil {
@@ -43,9 +28,13 @@ func Init() *sql.DB {
 	return db
 }
 
-func AddPeer(name string, address string, peerID string) error {
-	_, err := db.Exec("INSERT INTO peers (name, address, peer_id) VALUES (?, ?, ?)", name, address, peerID)
-	return err
+func AddPeer(name string, address string, peerID string) (int64, error) {
+	res, err := db.Exec("INSERT INTO peers (name, address, peer_id) VALUES (?, ?, ?)", name, address, peerID)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.LastInsertId()
 }
 
 func GetPeers() ([]Peer, error) {
@@ -68,9 +57,13 @@ func GetPeers() ([]Peer, error) {
 	return peers, nil
 }
 
-func AddSharedFile(path string, size int64, hash string) error {
-	_, err := db.Exec("INSERT INTO shared_files (path, size, hash) VALUES (?, ?, ?)", path, size, hash)
-	return err
+func AddSharedFile(path string, size int64, hash string) (int64, error) {
+	res, err := db.Exec("INSERT INTO shared_files (path, size, hash) VALUES (?, ?, ?)", path, size, hash)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.LastInsertId()
 }
 
 func GetSharedFiles() ([]File, error) {
@@ -92,4 +85,20 @@ func GetSharedFiles() ([]File, error) {
 	}
 
 	return files, nil
+}
+
+func RemoveSharedFile(id int64) error {
+	_, err := db.Exec("DELETE FROM shared_files WHERE id = ?", id)
+	return err
+}
+
+func GetSharedFile(id int64) (File, error) {
+	var file File
+	err := db.QueryRow("SELECT * FROM shared_files WHERE id = ?", id).Scan(&file.ID, &file.Path, &file.Size, &file.Hash)
+	if err != nil {
+		return file, err
+	}
+
+	file.Name = filepath.Base(file.Path)
+	return file, nil
 }

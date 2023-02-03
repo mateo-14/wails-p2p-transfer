@@ -30,6 +30,12 @@ type Request struct {
 	io.WriteCloser
 }
 
+// Request IDs
+const (
+	ReqGetFiles RequestID = iota
+	ReqDownloadFile
+)
+
 type MessageRequestHandler func(*Request)
 
 // Handle incoming messages

@@ -2,10 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { App } from './app';
-import Files from "./menu/files";
+import Files from './menu/files';
 import Peers from './menu/peers';
 import Peer from './menu/peers/Peer';
 import './style.css';
+import "react-contexify/dist/ReactContexify.css";
 
 const router = createMemoryRouter([
   {
@@ -13,7 +14,7 @@ const router = createMemoryRouter([
     element: <App />,
     children: [
       { path: '/peers', element: <Peers />, children: [{ path: '/peers/:id', element: <Peer /> }] },
-      { path: '/files', element: <Files /> },
+      { path: '/files', element: <Files /> }
     ]
   }
 ]);
@@ -23,3 +24,7 @@ ReactDOM.createRoot(document.getElementById('app') as HTMLElement).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
+
+if (!import.meta.env.DEV) {
+  document.addEventListener('contextmenu', e => e.preventDefault(), false);
+}
